@@ -1,2 +1,2 @@
-# FamBiz-prototype
+# FamBiz
 FamBiz（ポートフォリオ）のプロトタイプ用
