@@ -1,0 +1,1156 @@
+openapi: 3.1.0
+info:
+  title: FamBiz API
+  description: 家庭内タスク管理・お小遣い管理サービス FamBiz のREST API仕様（プロトタイプ版）
+  version: 1.0.0
+servers:
+- url: https://api.fambiz.example.com/v1
+  description: 本番想定エンドポイント
+- url: http://localhost:3000/v1
+  description: ローカル開発環境
+
+security:
+- bearerAuth: []
+
+tags:
+- name: AUTH
+  description: 認証・ユーザー管理
+- name: GROUP
+  description: 家族グループ管理
+- name: TASK
+  description: タスク（お手伝い）管理
+- name: GOAL
+  description: 目標（マンスリーゴール）管理
+- name: REWARD
+  description: 報酬・月次評価管理
+
+paths:
+  /auth/register:
+    post:
+      summary: ユーザー登録
+      tags: [AUTH]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 登録成功（アクセストークンを返却）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: メールアドレスが既に使用されている
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      summary: ログイン
+      tags: [AUTH]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/logout:
+    post:
+      summary: ログアウト（セッション破棄）
+      tags: [AUTH]
+      responses:
+        '200':
+          description: ログアウト成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/me:
+    get:
+      summary: ログイン中ユーザーのプロフィール取得
+      tags: [AUTH]
+      responses:
+        '200':
+          description: プロフィール取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: プロフィール更新（FUN-AUTH-006）
+      tags: [AUTH]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: アカウント削除（FUN-AUTH-007）
+      tags: [AUTH]
+      responses:
+        '200':
+          description: アカウント削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups:
+    post:
+      summary: 家族グループ登録
+      tags: [GROUP]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupCreateRequest'
+      responses:
+        '200':
+          description: グループ作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{groupId}/members:
+    get:
+      summary: 家族メンバー一覧取得
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      responses:
+        '200':
+          description: メンバー一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{groupId}/invite:
+    post:
+      summary: 家族グループ招待（QRコード用トークン発行）
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      responses:
+        '200':
+          description: 招待トークン発行成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/join:
+    post:
+      summary: 家族グループ参加（招待トークン使用）
+      tags: [GROUP]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupJoinRequest'
+      responses:
+        '200':
+          description: 参加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{groupId}/members/{userId}:
+    delete:
+      summary: 家族グループ脱退
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 脱退成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks:
+    get:
+      summary: タスク一覧取得（検索条件指定可）
+      tags: [TASK]
+      parameters:
+      - name: groupId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/TaskStatus'
+      - name: assigneeId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: タスク一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: タスク登録（親のみ）
+      tags: [TASK]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+      responses:
+        '200':
+          description: タスク登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{taskId}:
+    get:
+      summary: タスク詳細取得
+      tags: [TASK]
+      parameters:
+      - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: タスク詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: タスク編集（親のみ）
+      tags: [TASK]
+      parameters:
+      - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200':
+          description: タスク編集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: タスク削除（親のみ）
+      tags: [TASK]
+      parameters:
+      - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: タスク削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/{taskId}/status:
+    patch:
+      summary: タスクステータス変更（実行報告・承認・差し戻し）
+      tags: [TASK]
+      parameters:
+      - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskStatusUpdateRequest'
+      responses:
+        '200':
+          description: ステータス変更成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /goals:
+    get:
+      summary: 目標一覧取得
+      tags: [GOAL]
+      parameters:
+      - name: groupId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: targetMonth
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+      responses:
+        '200':
+          description: 目標一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Goal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: 目標登録（親のみ）
+      tags: [GOAL]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalCreateRequest'
+      responses:
+        '200':
+          description: 目標登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /goals/{goalId}:
+    get:
+      summary: 目標詳細取得
+      tags: [GOAL]
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      responses:
+        '200':
+          description: 目標詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: 目標削除（親のみ）
+      tags: [GOAL]
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      responses:
+        '200':
+          description: 目標削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /goals/{goalId}/status:
+    patch:
+      summary: 目標ステータス変更（挑戦・達成判定・承認）
+      tags: [GOAL]
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalStatusUpdateRequest'
+      responses:
+        '200':
+          description: ステータス変更成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rewards:
+    get:
+      summary: 月次報酬・評価の取得
+      tags: [REWARD]
+      parameters:
+      - name: childId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: targetMonth
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+      responses:
+        '200':
+          description: 月次報酬取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rewards/{rewardId}/evaluation:
+    post:
+      summary: 月次評価の登録（親のみ）
+      tags: [REWARD]
+      parameters:
+      - $ref: '#/components/parameters/RewardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationRequest'
+      responses:
+        '200':
+          description: 評価登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rewards/{rewardId}/pay:
+    post:
+      summary: 支払い完了処理（親のみ）
+      tags: [REWARD]
+      parameters:
+      - $ref: '#/components/parameters/RewardId'
+      responses:
+        '200':
+          description: 支払い完了処理成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reward'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rewards/graph:
+    get:
+      summary: 報酬グラフ用データの取得（カテゴリ別・推移）
+      tags: [REWARD]
+      parameters:
+      - name: childId
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: targetMonth
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+      responses:
+        '200':
+          description: グラフデータ取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardGraph'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth が発行するJWTをBearerトークンとして指定する
+
+  parameters:
+    GroupId:
+      name: groupId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GoalId:
+      name: goalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RewardId:
+      name: rewardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: リクエストが不正
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: 認証エラー（トークン不正・権限不足）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: リソースが存在しない
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    UserRole:
+      type: string
+      enum: [parent, child]
+      description: 続柄（親 / 子）
+
+    TaskStatus:
+      type: string
+      enum: [pending, reported, completed, cancelled, expired]
+      description: タスクステータス
+
+    GoalStatus:
+      type: string
+      enum: [not_started, in_progress, pending_approval, achieved, failed]
+      description: 目標ステータス（未挑戦 / 挑戦中 / 承認待ち / 達成済 / 未達成）
+
+    RewardStatus:
+      type: string
+      enum: [pending, paid]
+      description: 支払いステータス
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: エラーコード
+          examples: [VALIDATION_ERROR]
+        message:
+          type: string
+          description: エラーメッセージ
+          examples: [入力値が不正です]
+        details:
+          type: array
+          items:
+            type: string
+          description: 補足情報（任意）
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          examples: [処理が完了しました]
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWTアクセストークン
+        user:
+          $ref: '#/components/schemas/User'
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        comment:
+          type: string
+
+    User:
+      type: object
+      required: [id, email, name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        avatarUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+        comment:
+          type:
+          - string
+          - 'null'
+        createdAt:
+          type: string
+          format: date-time
+
+    Group:
+      type: object
+      required: [id, groupName, ownerId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupName:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    GroupCreateRequest:
+      type: object
+      required: [groupName]
+      properties:
+        groupName:
+          type: string
+
+    GroupMember:
+      type: object
+      required: [id, groupId, user]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/User'
+        joinedAt:
+          type: string
+          format: date-time
+
+    InviteResponse:
+      type: object
+      required: [inviteCode]
+      properties:
+        inviteCode:
+          type: string
+          description: QRコードに埋め込む招待トークン
+        expiresAt:
+          type: string
+          format: date-time
+
+    GroupJoinRequest:
+      type: object
+      required: [inviteCode]
+      properties:
+        inviteCode:
+          type: string
+
+    Task:
+      type: object
+      required: [id, groupId, creatorId, taskName, rewardAmount, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        creatorId:
+          type: string
+          format: uuid
+        assigneeId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        taskName:
+          type: string
+        category:
+          type:
+          - string
+          - 'null'
+        rewardAmount:
+          type: integer
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        startTime:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        endTime:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        dueDate:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        memo:
+          type:
+          - string
+          - 'null'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskCreateRequest:
+      type: object
+      required: [groupId, taskName, rewardAmount]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        assigneeId:
+          type: string
+          format: uuid
+        taskName:
+          type: string
+        category:
+          type: string
+        rewardAmount:
+          type: integer
+          minimum: 0
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+        memo:
+          type: string
+
+    TaskUpdateRequest:
+      type: object
+      properties:
+        assigneeId:
+          type: string
+          format: uuid
+        taskName:
+          type: string
+        category:
+          type: string
+        rewardAmount:
+          type: integer
+          minimum: 0
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+        memo:
+          type: string
+
+    TaskStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        comment:
+          type: string
+          description: 差し戻し理由など（任意）
+
+    Goal:
+      type: object
+      required: [id, groupId, creatorId, goalName, goalReward, status, targetMonth]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        creatorId:
+          type: string
+          format: uuid
+        assigneeId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        taskId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        goalName:
+          type: string
+        goalReward:
+          type: integer
+          minimum: 0
+        targetCount:
+          type:
+          - integer
+          - 'null'
+        action:
+          type:
+          - string
+          - 'null'
+        andConditionFlag:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/GoalStatus'
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+        progressRate:
+          type: number
+          description: 達成率（0〜100）
+        createdAt:
+          type: string
+          format: date-time
+
+    GoalCreateRequest:
+      type: object
+      required: [groupId, goalName, goalReward, targetMonth]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        assigneeId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        goalName:
+          type: string
+        goalReward:
+          type: integer
+          minimum: 0
+        targetCount:
+          type: integer
+        action:
+          type: string
+        andConditionFlag:
+          type: boolean
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+
+    GoalStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/GoalStatus'
+
+    Reward:
+      type: object
+      required: [id, groupId, childId, targetMonth, totalAmount, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+        taskRewardTotal:
+          type: integer
+        bonusRewardTotal:
+          type: integer
+        totalAmount:
+          type: integer
+        evaluationScore:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 5
+        evaluationComment:
+          type:
+          - string
+          - 'null'
+        status:
+          $ref: '#/components/schemas/RewardStatus'
+        paidAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    EvaluationRequest:
+      type: object
+      required: [evaluationScore]
+      properties:
+        evaluationScore:
+          type: integer
+          minimum: 1
+          maximum: 5
+        evaluationComment:
+          type: string
+
+    RewardGraph:
+      type: object
+      required: [targetMonth, categories]
+      properties:
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+        totalAmount:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: object
+            required: [category, amount]
+            properties:
+              category:
+                type: string
+              amount:
+                type: integer
+              completedCount:
+                type: integer
+              achievementRate:
+                type: number

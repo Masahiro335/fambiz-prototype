@@ -1,0 +1,194 @@
+// FamBiz - Database Schema (DBML)
+// プロトタイプ版（Supabase / PostgreSQL）を想定
+
+Enum user_role {
+  parent [note: '親']
+  child  [note: '子']
+}
+
+Enum task_status {
+  pending   [note: '未対応']
+  reported  [note: '対応済（実行報告済み）']
+  completed [note: '完了（承認済み・報酬確定）']
+  cancelled [note: 'キャンセル済']
+  expired   [note: '期限切れ']
+}
+
+Enum goal_status {
+  not_started      [note: '未挑戦']
+  in_progress      [note: '挑戦中']
+  pending_approval [note: '承認待ち（親が達成判定済み・ボーナス未確定）']
+  achieved         [note: '達成済（親が承認済み・ボーナス確定）']
+  failed           [note: '未達成']
+}
+
+Enum reward_status {
+  pending [note: '未払い（集計中）']
+  paid    [note: '支払い完了']
+}
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(255) [not null, unique, note: 'メールアドレス（ログインID）']
+  password_hash varchar(255) [not null, note: 'パスワードハッシュ']
+  name varchar(100) [not null, note: '表示名']
+  role user_role [not null, note: '続柄（親 / 子）']
+  avatar_url varchar(512) [note: 'アイコン画像URL']
+  comment varchar(255) [note: 'コメント']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    email [unique, name: 'idx_users_email']
+    role [name: 'idx_users_role']
+  }
+  Note: '利用者（親・子）のアカウント情報を管理する'
+}
+
+Table groups {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_name varchar(100) [not null, note: '家族グループ名']
+  invite_code varchar(64) [unique, note: 'QRコード招待用トークン']
+  owner_id uuid [not null, note: '作成者（親）']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    owner_id [name: 'idx_groups_owner_id']
+    invite_code [unique, name: 'idx_groups_invite_code']
+  }
+  Note: '家族（グループ）を管理する'
+}
+
+Table group_members {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null, note: '所属する家族グループ']
+  user_id uuid [not null, note: '所属するユーザー']
+  joined_at timestamptz [not null, default: `now()`]
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (group_id, user_id) [unique, name: 'idx_group_members_group_user']
+    user_id [name: 'idx_group_members_user_id']
+  }
+  Note: '家族グループとユーザーの所属関係（中間テーブル）を管理する'
+}
+
+Table tasks {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null, note: '対象の家族グループ']
+  creator_id uuid [not null, note: '作成者（親）']
+  assignee_id uuid [note: '担当する子（任意）']
+  task_name varchar(150) [not null, note: 'タスク名']
+  category varchar(50) [note: 'タスク分類（掃除・料理・洗濯など）']
+  reward_amount integer [not null, default: 0, note: '単価（円）。0円=ボランティア可']
+  status task_status [not null, default: 'pending', note: 'ステータス']
+  start_time timestamptz [note: '開始時間']
+  end_time timestamptz [note: '終了時間']
+  due_date timestamptz [note: '有効期限（単発タスク）']
+  memo varchar(500) [note: 'メモ']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    group_id [name: 'idx_tasks_group_id']
+    creator_id [name: 'idx_tasks_creator_id']
+    assignee_id [name: 'idx_tasks_assignee_id']
+    status [name: 'idx_tasks_status']
+    due_date [name: 'idx_tasks_due_date']
+  }
+  Note: '家事・お手伝いタスクを管理する'
+}
+
+Table task_completions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  task_id uuid [not null, note: '対象タスク']
+  child_id uuid [not null, note: '実行報告した子']
+  reported_at timestamptz [not null, default: `now()`, note: '実行報告日時']
+  approved_by uuid [note: '承認した親']
+  approved_at timestamptz [note: '承認日時']
+  confirmed_reward integer [not null, default: 0, note: '確定報酬額（承認時に計上）']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    task_id [name: 'idx_task_completions_task_id']
+    child_id [name: 'idx_task_completions_child_id']
+    approved_by [name: 'idx_task_completions_approved_by']
+  }
+  Note: 'タスクの実行報告・承認・確定報酬の実績を管理する'
+}
+
+Table goals {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null, note: '対象の家族グループ']
+  creator_id uuid [not null, note: '作成者（親）']
+  assignee_id uuid [note: '挑戦する子（任意）']
+  task_id uuid [note: '紐付く対象タスク（定量目標の集計対象）']
+  goal_name varchar(150) [not null, note: '目標名']
+  goal_reward integer [not null, default: 0, note: '目標報酬（達成ボーナス）']
+  target_count integer [note: 'タスク完了回数（定量目標）']
+  action varchar(255) [note: '行動（定性目標）']
+  and_condition_flag boolean [not null, default: false, note: 'AND条件フラグ（複数条件の同時達成）']
+  status goal_status [not null, default: 'not_started', note: 'ステータス']
+  target_month char(7) [not null, note: '対象月（YYYY-MM）']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    group_id [name: 'idx_goals_group_id']
+    creator_id [name: 'idx_goals_creator_id']
+    assignee_id [name: 'idx_goals_assignee_id']
+    task_id [name: 'idx_goals_task_id']
+    target_month [name: 'idx_goals_target_month']
+  }
+  Note: '親が毎月設定するマンスリーゴールを管理する'
+}
+
+Table rewards {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null, note: '対象の家族グループ']
+  child_id uuid [not null, note: '報酬を受け取る子']
+  target_month char(7) [not null, note: '集計対象月（YYYY-MM）']
+  task_reward_total integer [not null, default: 0, note: 'タスク確定報酬の合計（端数切捨て）']
+  bonus_reward_total integer [not null, default: 0, note: '目標達成ボーナスの合計']
+  total_amount integer [not null, default: 0, note: '月次合計報酬額']
+  evaluation_score smallint [note: '月次評価（星 1〜5）']
+  evaluation_comment varchar(500) [note: '月次評価コメント']
+  status reward_status [not null, default: 'pending', note: '支払いステータス']
+  paid_at timestamptz [note: '支払い完了日時']
+  deleted_flag boolean [not null, default: false]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (child_id, target_month) [unique, name: 'idx_rewards_child_month']
+    group_id [name: 'idx_rewards_group_id']
+    status [name: 'idx_rewards_status']
+  }
+  Note: '月次の報酬集計・月次評価・支払い状態を管理する'
+}
+
+// ---- 外部キー制約 ----
+Ref: groups.owner_id > users.id [delete: restrict]
+Ref: group_members.group_id > groups.id [delete: cascade]
+Ref: group_members.user_id > users.id [delete: cascade]
+Ref: tasks.group_id > groups.id [delete: cascade]
+Ref: tasks.creator_id > users.id [delete: restrict]
+Ref: tasks.assignee_id > users.id [delete: set null]
+Ref: task_completions.task_id > tasks.id [delete: cascade]
+Ref: task_completions.child_id > users.id [delete: restrict]
+Ref: task_completions.approved_by > users.id [delete: set null]
+Ref: goals.group_id > groups.id [delete: cascade]
+Ref: goals.creator_id > users.id [delete: restrict]
+Ref: goals.assignee_id > users.id [delete: set null]
+Ref: goals.task_id > tasks.id [delete: set null]
+Ref: rewards.group_id > groups.id [delete: cascade]
+Ref: rewards.child_id > users.id [delete: restrict]
