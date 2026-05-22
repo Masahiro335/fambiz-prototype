@@ -67,14 +67,15 @@ fambiz-prototype/
 ## ブランチ戦略
 
 ```
-main          # プロダクション（Vercel/Renderへ自動デプロイ）
+main          # デフォルトブランチ（直接プッシュ・マージ禁止）
 develop       # 開発統合ブランチ
+release       # 本番リリースブランチ（Vercel/Renderへ自動デプロイ）
 feature/xxx   # 機能開発（例: feature/fun-task-approval）
 fix/xxx       # バグ修正
 ```
 
 - PRはすべて `develop` へマージ
-- `develop → main` のマージ時にデプロイが走る
+- `develop → release` のマージ時にデプロイが走る
 - ブランチ名には機能ID（FUN-xxx）を含めることを推奨
 
 ---

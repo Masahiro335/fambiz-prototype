@@ -29,8 +29,8 @@
 ### CI/CD
 
 - [ ] 🟡 `.github/workflows/ci.yml` — lint + type-check + test（PR時）
-- [ ] 🟡 `.github/workflows/deploy-web.yml` — Vercel自動デプロイ（main merge時）
-- [ ] 🟡 `.github/workflows/deploy-api.yml` — Render自動デプロイ（main merge時）
+- [ ] 🟡 `.github/workflows/deploy-web.yml` — Vercel自動デプロイ（release merge時）
+- [ ] 🟡 `.github/workflows/deploy-api.yml` — Render自動デプロイ（release merge時）
 
 ### インフラ（Supabase）
 
