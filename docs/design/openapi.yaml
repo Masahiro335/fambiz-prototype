@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: FamBiz API
   description: 家庭内タスク管理・お小遣い管理サービス FamBiz のREST API仕様（プロトタイプ版）
-  version: 1.0.0
+  version: 1.1.0
 servers:
 - url: https://api.fambiz.example.com/v1
   description: 本番想定エンドポイント
@@ -27,7 +27,7 @@ tags:
 paths:
   /auth/register:
     post:
-      summary: ユーザー登録
+      summary: ユーザー登録（FUN-AUTH-001）
       tags: [AUTH]
       security: []
       requestBody:
@@ -37,7 +37,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '200':
+        '201':
           description: 登録成功（アクセストークンを返却）
           content:
             application/json:
@@ -54,7 +54,7 @@ paths:
 
   /auth/login:
     post:
-      summary: ログイン
+      summary: ログイン（FUN-AUTH-002）
       tags: [AUTH]
       security: []
       requestBody:
@@ -79,7 +79,7 @@ paths:
 
   /auth/logout:
     post:
-      summary: ログアウト（セッション破棄）
+      summary: ログアウト・セッション破棄（FUN-AUTH-003）
       tags: [AUTH]
       responses:
         '200':
@@ -88,12 +88,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
 
   /auth/me:
     get:
@@ -106,8 +102,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -151,7 +145,7 @@ paths:
 
   /groups:
     post:
-      summary: 家族グループ登録
+      summary: 家族グループ登録（親のみ・FUN-GROUP-001）
       tags: [GROUP]
       requestBody:
         required: true
@@ -160,7 +154,7 @@ paths:
             schema:
               $ref: '#/components/schemas/GroupCreateRequest'
       responses:
-        '200':
+        '201':
           description: グループ作成成功
           content:
             application/json:
@@ -170,54 +164,13 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
-  /groups/{groupId}/members:
-    get:
-      summary: 家族メンバー一覧取得
-      tags: [GROUP]
-      parameters:
-      - $ref: '#/components/parameters/GroupId'
-      responses:
-        '200':
-          description: メンバー一覧取得成功
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/GroupMember'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /groups/{groupId}/invite:
-    post:
-      summary: 家族グループ招待（QRコード用トークン発行）
-      tags: [GROUP]
-      parameters:
-      - $ref: '#/components/parameters/GroupId'
-      responses:
-        '200':
-          description: 招待トークン発行成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InviteResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
+  # /groups/join は静的パスのため /groups/{groupId} より先に定義する（NestJS ルーティング優先順）
   /groups/join:
     post:
-      summary: 家族グループ参加（招待トークン使用）
+      summary: 家族グループ参加・招待トークン使用（FUN-GROUP-005）
       tags: [GROUP]
       requestBody:
         required: true
@@ -239,9 +192,66 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /groups/{groupId}/members:
+    get:
+      summary: 家族メンバー一覧取得（FUN-GROUP-002）
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      responses:
+        '200':
+          description: メンバー一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupMember'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{groupId}/invite:
+    post:
+      summary: 家族グループ招待トークン発行（親のみ・FUN-GROUP-004）
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      responses:
+        '200':
+          description: 招待トークン発行成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /groups/{groupId}/members/{userId}:
+    get:
+      summary: 家族メンバー詳細取得（FUN-GROUP-003）
+      tags: [GROUP]
+      parameters:
+      - $ref: '#/components/parameters/GroupId'
+      - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: メンバー詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupMember'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
-      summary: 家族グループ脱退
+      summary: 家族グループ脱退（親のみ・FUN-GROUP-006）
       tags: [GROUP]
       parameters:
       - $ref: '#/components/parameters/GroupId'
@@ -253,16 +263,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /tasks:
     get:
-      summary: タスク一覧取得（検索条件指定可）
+      summary: タスク一覧取得・検索（FUN-TASK-006 / FUN-TASK-007）
       tags: [TASK]
       parameters:
       - name: groupId
@@ -282,6 +292,19 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: keyword
+        in: query
+        required: false
+        description: タスク名のキーワード検索（FUN-TASK-007）
+        schema:
+          type: string
+      - name: month
+        in: query
+        required: false
+        description: カレンダー表示用の対象月（YYYY-MM）。指定した月に期限・開始時間が含まれるタスクを返す（FUN-TASK-005）
+        schema:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
       responses:
         '200':
           description: タスク一覧取得成功
@@ -295,10 +318,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
     post:
-      summary: タスク登録（親のみ）
+      summary: タスク登録（親のみ・FUN-TASK-001）
       tags: [TASK]
       requestBody:
         required: true
@@ -307,7 +328,7 @@ paths:
             schema:
               $ref: '#/components/schemas/TaskCreateRequest'
       responses:
-        '200':
+        '201':
           description: タスク登録成功
           content:
             application/json:
@@ -317,8 +338,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /tasks/{taskId}:
     get:
@@ -333,14 +354,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
     put:
-      summary: タスク編集（親のみ）
+      summary: タスク編集（親のみ・FUN-TASK-002）
       tags: [TASK]
       parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -361,10 +380,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
-      summary: タスク削除（親のみ）
+      summary: タスク削除（親のみ・FUN-TASK-003）
       tags: [TASK]
       parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -375,16 +396,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /tasks/{taskId}/status:
     patch:
-      summary: タスクステータス変更（実行報告・承認・差し戻し）
+      summary: タスクステータス変更・実行報告・承認・差し戻し（FUN-TASK-004）
       tags: [TASK]
       parameters:
       - $ref: '#/components/parameters/TaskId'
@@ -405,12 +426,14 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /goals:
     get:
-      summary: 目標一覧取得
+      summary: 目標一覧取得（FUN-GOAL-001）
       tags: [GOAL]
       parameters:
       - name: groupId
@@ -438,10 +461,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
     post:
-      summary: 目標登録（親のみ）
+      summary: 目標登録（親のみ・FUN-GOAL-003）
       tags: [GOAL]
       requestBody:
         required: true
@@ -450,7 +471,7 @@ paths:
             schema:
               $ref: '#/components/schemas/GoalCreateRequest'
       responses:
-        '200':
+        '201':
           description: 目標登録成功
           content:
             application/json:
@@ -460,12 +481,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /goals/{goalId}:
     get:
-      summary: 目標詳細取得
+      summary: 目標詳細取得（FUN-GOAL-002）
       tags: [GOAL]
       parameters:
       - $ref: '#/components/parameters/GoalId'
@@ -476,14 +497,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Goal'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+    put:
+      summary: 目標編集（親のみ・FUN-GOAL-003）
+      tags: [GOAL]
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoalUpdateRequest'
+      responses:
+        '200':
+          description: 目標編集成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
-      summary: 目標削除（親のみ）
+      summary: 目標削除（親のみ・FUN-GOAL-004）
       tags: [GOAL]
       parameters:
       - $ref: '#/components/parameters/GoalId'
@@ -494,16 +539,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /goals/{goalId}/status:
     patch:
-      summary: 目標ステータス変更（挑戦・達成判定・承認）
+      summary: 目標ステータス変更（FUN-GOAL-005）
       tags: [GOAL]
       parameters:
       - $ref: '#/components/parameters/GoalId'
@@ -524,14 +569,23 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /rewards:
     get:
-      summary: 月次報酬・評価の取得
+      summary: 月次報酬・評価の取得（FUN-REWARD-001・002）
       tags: [REWARD]
       parameters:
+      - name: groupId
+        in: query
+        required: true
+        description: 家族グループID（他家族データへのアクセス防止）
+        schema:
+          type: string
+          format: uuid
       - name: childId
         in: query
         required: true
@@ -558,9 +612,29 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /rewards/{rewardId}/completions:
+    get:
+      summary: タスク別報酬明細の取得（FUN-REWARD-005）
+      tags: [REWARD]
+      parameters:
+      - $ref: '#/components/parameters/RewardId'
+      responses:
+        '200':
+          description: 報酬明細取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskCompletion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /rewards/{rewardId}/evaluation:
     post:
-      summary: 月次評価の登録（親のみ）
+      summary: 月次評価の登録（親のみ・FUN-REWARD-003）
       tags: [REWARD]
       parameters:
       - $ref: '#/components/parameters/RewardId'
@@ -581,6 +655,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -597,18 +673,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Reward'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
   /rewards/graph:
     get:
-      summary: 報酬グラフ用データの取得（カテゴリ別・推移）
+      summary: 報酬グラフ用データの取得・カテゴリ別・推移（FUN-REWARD-004）
       tags: [REWARD]
       parameters:
+      - name: groupId
+        in: query
+        required: true
+        description: 家族グループID（他家族データへのアクセス防止）
+        schema:
+          type: string
+          format: uuid
       - name: childId
         in: query
         required: true
@@ -621,6 +704,15 @@ paths:
         schema:
           type: string
           pattern: '^\d{4}-\d{2}$'
+      - name: historyMonths
+        in: query
+        required: false
+        description: 推移データとして遡る月数（デフォルト6・最大12）
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 6
       responses:
         '200':
           description: グラフデータ取得成功
@@ -688,7 +780,13 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
-      description: 認証エラー（トークン不正・権限不足）
+      description: 認証エラー（トークン不正・未ログイン）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: 権限エラー（ロール不足。親専用操作を子が実行した場合など）
       content:
         application/json:
           schema:
@@ -709,7 +807,7 @@ components:
     TaskStatus:
       type: string
       enum: [pending, reported, completed, cancelled, expired]
-      description: タスクステータス
+      description: タスクステータス（pending=未対応 / reported=対応済 / completed=完了 / cancelled=キャンセル済 / expired=期限切れ）
 
     GoalStatus:
       type: string
@@ -925,6 +1023,28 @@ components:
           type:
           - string
           - 'null'
+        latestCompletion:
+          type:
+          - object
+          - 'null'
+          description: 最新の実行報告情報（reported / completed 状態時に参照）
+          properties:
+            reportedAt:
+              type: string
+              format: date-time
+            reportedBy:
+              type: string
+              format: uuid
+            approvedAt:
+              type:
+              - string
+              - 'null'
+              format: date-time
+            approvedBy:
+              type:
+              - string
+              - 'null'
+              format: uuid
         createdAt:
           type: string
           format: date-time
@@ -995,6 +1115,42 @@ components:
         comment:
           type: string
           description: 差し戻し理由など（任意）
+
+    TaskCompletion:
+      type: object
+      required: [id, taskId, taskName, childId, reportedAt, confirmedReward]
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        taskName:
+          type: string
+        category:
+          type:
+          - string
+          - 'null'
+        childId:
+          type: string
+          format: uuid
+        reportedAt:
+          type: string
+          format: date-time
+        approvedBy:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        approvedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        confirmedReward:
+          type: integer
+          minimum: 0
 
     Goal:
       type: object
@@ -1074,6 +1230,30 @@ components:
           type: string
           pattern: '^\d{4}-\d{2}$'
 
+    GoalUpdateRequest:
+      type: object
+      properties:
+        assigneeId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        goalName:
+          type: string
+        goalReward:
+          type: integer
+          minimum: 0
+        targetCount:
+          type: integer
+        action:
+          type: string
+        andConditionFlag:
+          type: boolean
+        targetMonth:
+          type: string
+          pattern: '^\d{4}-\d{2}$'
+
     GoalStatusUpdateRequest:
       type: object
       required: [status]
@@ -1120,6 +1300,7 @@ components:
           - string
           - 'null'
           format: date-time
+
     EvaluationRequest:
       type: object
       required: [evaluationScore]
@@ -1133,7 +1314,7 @@ components:
 
     RewardGraph:
       type: object
-      required: [targetMonth, categories]
+      required: [targetMonth, categories, history]
       properties:
         targetMonth:
           type: string
@@ -1142,6 +1323,7 @@ components:
           type: integer
         categories:
           type: array
+          description: 当月のカテゴリ別報酬内訳
           items:
             type: object
             required: [category, amount]
@@ -1154,3 +1336,19 @@ components:
                 type: integer
               achievementRate:
                 type: number
+        history:
+          type: array
+          description: 過去数ヶ月の月次報酬推移（historyMonthsパラメータで件数を指定）
+          items:
+            type: object
+            required: [month, totalAmount]
+            properties:
+              month:
+                type: string
+                pattern: '^\d{4}-\d{2}$'
+              totalAmount:
+                type: integer
+              taskRewardTotal:
+                type: integer
+              bonusRewardTotal:
+                type: integer
