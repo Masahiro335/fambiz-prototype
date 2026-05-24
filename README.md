@@ -17,6 +17,7 @@
 - [主要な技術的判断（ADR）](#主要な技術的判断adr)
 - [セキュリティ設計](#セキュリティ設計)
 - [開発フロー](#開発フロー)
+- [CI/CD](#cicd)
 - [ローカル起動](#ローカル起動)
 - [ディレクトリ構成](#ディレクトリ構成)
 
@@ -302,6 +303,89 @@ docs(adr): ADR-0003 Supabase Auth方針を追記
 | `/openapi-check`     | 実装とopenapi.yamlの整合性を**並列検証** | 最大5本                 |
 | `/task-status`       | MVP進捗サマリーと次タスク推薦を表示      | —                       |
 | `/gen-migration`     | schema.dbmlからマイグレーションSQLを生成 | 1本                     |
+
+---
+
+## CI/CD
+
+GitHub Actions で3本のワークフローを定義しています（`.github/workflows/`）。
+
+### ワークフロー全体像
+
+```
+feature/** / fix/** へ push
+PR → develop / main
+         │
+         ▼
+┌─────────────────────────────────┐
+│          ci.yml                 │
+│                                 │
+│  [Lint] ──┐                     │
+│           ├──▶ all-checks-passed│  ← ブランチ保護の必須チェック
+│  [Build] ─┤   （全ジョブ並列）  │
+│           │                     │
+│  [Test] ──┘                     │
+└─────────────────────────────────┘
+
+develop → release へ push
+         │
+         ├──▶ deploy-web.yml ──▶ Vercel（本番）
+         │
+         └──▶ deploy-api.yml ──▶ Render（本番）
+```
+
+### ワークフロー詳細
+
+#### `ci.yml` — PR・開発ブランチの品質チェック
+
+| ジョブ | 内容 | 備考 |
+| --- | --- | --- |
+| Lint | ESLint（全パッケージ） | 並列実行 |
+| Type Check | `pnpm build`（TypeScriptコンパイル） | 並列実行 |
+| Unit Test | Jest（全パッケージ） + カバレッジ出力 | 並列実行 |
+| all-checks-passed | 全ジョブの成否を集約 | ブランチ保護ルールに登録する |
+
+- 同ブランチへの連続プッシュで古いジョブを自動キャンセル（`concurrency`）
+- Turborepoキャッシュ（`.turbo/`）により2回目以降の実行を高速化
+- カバレッジレポートをArtifactとして7日間保存
+
+#### `deploy-web.yml` — Vercel 本番デプロイ
+
+```
+CIチェック（lint + build + test）
+    │ 成功時のみ
+    ▼
+vercel pull → vercel build --prod → vercel deploy --prebuilt --prod
+    │
+    ▼
+コミットコメントにデプロイURLを自動投稿
+```
+
+#### `deploy-api.yml` — Render 本番デプロイ
+
+```
+CIチェック（lint + build + test）
+    │ 成功時のみ
+    ▼
+Render デプロイフックを POST
+    │
+    ▼
+Render API をポーリング（30秒 × 最大20回）
+    │ status === "live" で完了
+    ▼
+コミットコメントに成否を自動投稿
+```
+
+### 必要な GitHub Secrets
+
+| シークレット | 用途 |
+| --- | --- |
+| `VERCEL_TOKEN` | Vercel API 認証トークン |
+| `VERCEL_ORG_ID` | Vercel 組織 ID |
+| `VERCEL_PROJECT_ID` | Vercel プロジェクト ID |
+| `RENDER_DEPLOY_HOOK_URL` | Render デプロイ起動 URL |
+| `RENDER_API_KEY` | Render デプロイ状態確認用 API キー |
+| `RENDER_SERVICE_ID` | Render サービス ID（`srv-xxx` 形式） |
 
 ---
 
