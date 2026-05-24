@@ -84,6 +84,58 @@ fix/xxx       # バグ修正
 
 ---
 
+## CI/CDパイプライン
+
+GitHub Actions で3つのワークフローを定義している（`.github/workflows/`）。
+
+### ワークフローとトリガーの対応
+
+| ワークフロー | トリガーブランチ | 実行内容 |
+|---|---|---|
+| `ci.yml` | `feature/**` / `fix/**` / `develop` へのプッシュ、`develop` / `main` へのPR | Lint・型チェック・テストを**並列**実行 |
+| `deploy-web.yml` | `release` へのプッシュ | CIチェック後、Next.js を Vercel 本番デプロイ |
+| `deploy-api.yml` | `release` へのプッシュ | CIチェック後、NestJS を Render 本番デプロイ |
+
+### CIジョブ構成（ci.yml）
+
+```
+[Lint] ─┐
+         ├─▶ all-checks-passed（マージブロック用）
+[Build] ─┤     ↑ 全ジョブ並列実行
+         │
+[Test] ──┘
+```
+
+- `concurrency` 設定により、同ブランチへの連続プッシュで古いジョブを自動キャンセル
+- `all-checks-passed` を `develop` ブランチの必須ステータスチェックに設定してマージを保護する
+
+### デプロイフロー（release プッシュ時）
+
+```
+release へのプッシュ
+    │
+    ├──▶ deploy-web.yml: CIチェック → Vercel デプロイ → コミットにURL通知
+    │
+    └──▶ deploy-api.yml: CIチェック → Render フック → 完了ポーリング → 結果通知
+```
+
+### 必要なGitHub Secrets
+
+以下のシークレットをリポジトリの `Settings › Secrets and variables › Actions` に登録する。
+
+| シークレット | 用途 | 取得元 |
+|---|---|---|
+| `VERCEL_TOKEN` | Vercel API認証 | Vercel › Settings › Tokens |
+| `VERCEL_ORG_ID` | Vercelプロジェクト特定 | `vercel link` 後の `.vercel/project.json` |
+| `VERCEL_PROJECT_ID` | Vercelプロジェクト特定 | 同上 |
+| `RENDER_DEPLOY_HOOK_URL` | Renderデプロイ起動 | Render › Service › Settings › Deploy Hook |
+| `RENDER_API_KEY` | Renderデプロイ状態確認 | Render › Account Settings › API Keys |
+| `RENDER_SERVICE_ID` | Renderサービス特定 | Renderダッシュボードの `srv-xxx` 形式ID |
+
+詳細な仕様は `docs/requirements/non-functional-requirements.md` の「4-1. CI/CDパイプライン詳細」を参照。
+
+---
+
 ## コミットメッセージ規約
 
 ```

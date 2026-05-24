@@ -5,7 +5,7 @@
 | システムID・名 | FAM_BIZ / FamBiz |
 | サブシステムID・名 | FB001 / 家事手伝い |
 | 作成日 | 2025-12-01 |
-| 最終更新日 | — |
+| 最終更新日 | 2026-05-24 |
 
 ---
 
@@ -59,6 +59,115 @@
 | バックアップ | Supabase/RDSの自動バックアップ（1日1回） |
 | リストア手順 | スナップショットから復元 |
 | デプロイ | CI/CD（GitHub Actions + Vercel/Render自動デプロイ） |
+
+---
+
+## 4-1. CI/CDパイプライン詳細
+
+### ワークフロー一覧
+
+| ファイル | トリガー | 用途 |
+|---------|---------|------|
+| `.github/workflows/ci.yml` | `feature/**` / `fix/**` / `develop` へのプッシュ、`develop` / `main` へのPR | lint・型チェック・テストの自動実行 |
+| `.github/workflows/deploy-web.yml` | `release` ブランチへのプッシュ | Next.js を Vercel 本番環境へデプロイ |
+| `.github/workflows/deploy-api.yml` | `release` ブランチへのプッシュ | NestJS を Render 本番環境へデプロイ |
+
+### ci.yml — CIパイプライン
+
+```
+プッシュ / PR
+    │
+    ├──[並列]── Lint        (ESLint / 全パッケージ)
+    ├──[並列]── Type Check  (pnpm build / TypeScript コンパイル)
+    └──[並列]── Unit Test   (Jest / 全パッケージ・カバレッジ出力)
+                    │
+                    └──▶ all-checks-passed（ブランチ保護ルールのステータスチェック）
+```
+
+| 設定項目 | 内容 |
+|---------|------|
+| 並行実行制御 | 同ブランチへの連続プッシュ時、古いジョブを自動キャンセル（`cancel-in-progress: true`） |
+| キャッシュ | pnpm store + Turborepo（`.turbo/`）をジョブごとにキャッシュ |
+| カバレッジ | `apps/api/coverage/` と `apps/web/coverage/` をArtifactとして7日間保存 |
+| ブランチ保護 | `all-checks-passed` ジョブを必須ステータスチェックに設定することでマージをブロック |
+
+### deploy-web.yml — Vercel デプロイパイプライン
+
+```
+release ブランチへのプッシュ
+    │
+    ▼
+pre-deploy-check（lint + build + test を直列実行）
+    │ 成功時のみ
+    ▼
+vercel pull（本番環境変数を取得）
+    │
+    ▼
+vercel build --prod（Vercel のビルドパイプラインで Next.js をビルド）
+    │
+    ▼
+vercel deploy --prebuilt --prod（ビルド済みアーティファクトをデプロイ）
+    │
+    ▼
+コミットコメントにデプロイ URL を自動投稿
+```
+
+| 設定項目 | 内容 |
+|---------|------|
+| 並行実行制御 | 同時デプロイを防ぐためキューイング（`cancel-in-progress: false`） |
+| デプロイ保護 | `pre-deploy-check` が成功しない限りデプロイジョブは実行されない |
+| 環境 | GitHub Environments の `production` を使用（承認フロー設定が可能） |
+
+必要なシークレット:
+
+| シークレット名 | 取得元 |
+|---|---|
+| `VERCEL_TOKEN` | Vercel › Settings › Tokens で発行 |
+| `VERCEL_ORG_ID` | `vercel link` 後の `.vercel/project.json` に記載 |
+| `VERCEL_PROJECT_ID` | 同上 |
+
+### deploy-api.yml — Render デプロイパイプライン
+
+```
+release ブランチへのプッシュ
+    │
+    ▼
+pre-deploy-check（lint + build + test を直列実行）
+    │ 成功時のみ
+    ▼
+Render デプロイフックを POST（curl）
+    │
+    ▼
+Render API をポーリング（30秒間隔 × 最大20回 = 最大10分）
+    │ status が "live" になったら成功
+    ▼
+コミットコメントにデプロイ結果を自動投稿
+```
+
+| 設定項目 | 内容 |
+|---------|------|
+| 並行実行制御 | 同時デプロイを防ぐためキューイング（`cancel-in-progress: false`） |
+| デプロイ完了確認 | Render API で `deploy.status === "live"` を確認してからジョブを完了とみなす |
+| タイムアウト | 10分（30秒 × 20回）でポーリングを打ち切りエラー終了 |
+
+必要なシークレット:
+
+| シークレット名 | 取得元 |
+|---|---|
+| `RENDER_DEPLOY_HOOK_URL` | Render › Service › Settings › Deploy Hook で発行 |
+| `RENDER_API_KEY` | Render › Account Settings › API Keys で発行 |
+| `RENDER_SERVICE_ID` | Render サービスの ID（`srv-xxxxxxxxxx` 形式） |
+
+### GitHub リポジトリの推奨設定
+
+ブランチ保護ルール（`develop` ブランチ）に以下を設定することを推奨する。
+
+| 設定 | 値 |
+|-----|---|
+| Require status checks to pass before merging | ✅ 有効 |
+| 必須ステータスチェック | `all-checks-passed` |
+| Require branches to be up to date | ✅ 有効 |
+| Restrict who can push to matching branches | ✅ 有効（直接プッシュ禁止） |
 
 ---
 
