@@ -18,6 +18,10 @@
 
 ```
 fambiz-prototype/
+├── .claude/          # Claude Code 設定・カスタマイズ
+│   ├── settings.json # 権限設定（自動許可コマンド）
+│   ├── commands/     # カスタムスラッシュコマンド（/implement など）
+│   └── skills/       # 再利用スキル定義（実装規約・セキュリティチェック）
 ├── apps/             # モノレポ内のアプリケーション群
 │   ├── web/          # Next.js 14 フロントエンド（Vercel）
 │   └── api/          # NestJS バックエンド（Render）
@@ -142,6 +146,44 @@ pnpm test
 # Supabaseマイグレーション実行
 pnpm supabase db push
 ```
+
+---
+
+## Claude Code カスタマイズ（`.claude/`）
+
+`.claude/` ディレクトリに FamBiz 専用のスラッシュコマンドとスキルを定義している。
+
+### スラッシュコマンド（`.claude/commands/`）
+
+| コマンド | 引数 | 概要 | サブエージェント |
+|---|---|---|---|
+| `/implement` | `<FUN-xxx>` | 機能IDを指定して API + Web を並列実装 | 2本（API / Web） |
+| `/security-audit` | `[domain]` | 認証認可・データ分離・計算精度を並列監査 | 3本 |
+| `/openapi-check` | `[domain]` | 実装と `openapi.yaml` の整合性を並列検証 | 最大5本 |
+| `/task-status` | `[phase番号]` | `mvp-tasks.md` の進捗サマリーと次タスク推薦を表示 | なし |
+| `/gen-migration` | `<名前>` | `schema.dbml` を元に Supabase マイグレーション SQL を生成 | 1本 |
+
+**使用例:**
+```bash
+/implement FUN-AUTH-001        # 認証APIと画面を並列実装
+/security-audit tasks          # tasksドメインのセキュリティ監査
+/openapi-check                 # 全ドメインのOpenAPI整合性チェック
+/task-status                   # 全フェーズの進捗確認
+/gen-migration add_goals_table # goalsテーブルのマイグレーション生成
+```
+
+### スキル（`.claude/skills/`）
+
+| スキル | 概要 |
+|---|---|
+| `fambiz-implement` | NestJS / Next.js の実装手順・必須コードパターン・業務ルール遵守チェックリスト |
+| `fambiz-security` | 認証認可・`family_group_id` 分離・計算精度・タイムゾーンの4項目チェック表 |
+
+スキルはスラッシュコマンドのサブエージェントから自動参照される他、通常の実装作業中にも適宜使用する。
+
+### 設定（`.claude/settings.json`）
+
+`pnpm` / `find` / `grep` / `git` の読み取り系コマンドを自動許可している。
 
 ---
 
