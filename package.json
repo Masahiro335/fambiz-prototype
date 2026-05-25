@@ -8,7 +8,10 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "type-check": "turbo run type-check"
+    "type-check": "turbo run type-check",
+    "supabase:push": "cd infra && supabase db push",
+    "supabase:seed": "cd infra && supabase db query --file supabase/seed/seed.sql",
+    "supabase:reset": "cd infra && supabase db reset"
   },
   "devDependencies": {
     "prettier": "^3.3.3",

@@ -39,4 +39,4 @@ pnpm-debug.log*
 coverage
 
 # Supabase
-supabase/.temp
+**/supabase/.temp
