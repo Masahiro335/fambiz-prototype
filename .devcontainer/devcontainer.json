@@ -1,0 +1,72 @@
+{
+  "name": "FamBiz Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
+
+  // 開発ツール
+  "features": {
+    // GitHub CLI（PR作成・Issue管理）
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+
+  // VS Code 拡張機能と設定
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // コード品質
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "usernamehw.errorlens",
+        // TypeScript / Next.js / NestJS
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        // 開発補助
+        "eamodio.gitlens",
+        "mikestead.dotenv",
+        "humao.rest-client"
+      ],
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        // ワークスペースのTypeScriptを使用（strict:trueが適用された設定を使うため）
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true
+      }
+    }
+  },
+
+  // ポートフォワーディング（ローカル開発サーバー）
+  "forwardPorts": [3000, 3001, 54321, 54322, 54323],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js（web）",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "NestJS API",
+      "onAutoForward": "notify"
+    },
+    "54321": {
+      "label": "Supabase API（ローカル）",
+      "onAutoForward": "silent"
+    },
+    "54322": {
+      "label": "Supabase Studio（ローカル）",
+      "onAutoForward": "notify"
+    },
+    "54323": {
+      "label": "Supabase Inbucket（ローカル）",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // コンテナ作成後に pnpm・Supabase CLI をインストールしてから依存パッケージを解決する
+  // corepack: Node.js 20 に同梱のパッケージマネージャー管理ツールで pnpm を有効化
+  // supabase: npm 経由で公式 Supabase CLI をインストール（devcontainers-contrib feature が非推奨のため）
+  "postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && npm install -g supabase && pnpm install",
+
+  "remoteUser": "node"
+}
