@@ -34,11 +34,11 @@
 
 ### インフラ（Supabase）
 
-- [ ] 🔴 Supabaseプロジェクト作成
-- [ ] 🔴 `infra/supabase/migrations/` 初期スキーマ作成（users, groups, group_members, tasks, task_completions, goals, rewards）
-- [ ] 🔴 RLSポリシーの設定（family_group_id による分離）
-- [ ] 🟡 `infra/supabase/seed/` 開発用シードデータ（親子ユーザー・サンプルタスク）
-- [ ] 🟡 JWTカスタムクレーム用のDatabase Hook（role / family_group_id）
+- [x] 🔴 Supabaseプロジェクト作成
+- [x] 🔴 `infra/supabase/migrations/` 初期スキーマ作成（users, groups, group_members, tasks, task_completions, goals, rewards）
+- [x] 🔴 RLSポリシーの設定（family_group_id による分離）
+- [x] 🟡 `infra/supabase/seed/` 開発用シードデータ（親子ユーザー・サンプルタスク）
+- [x] 🟡 JWTカスタムクレーム用のDatabase Hook（role / family_group_id）
 
 ---
 
