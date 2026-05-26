@@ -32,9 +32,9 @@ export class AuthService {
   constructor(private readonly configService: ConfigService) {
     const url = this.configService.getOrThrow<string>('SUPABASE_URL');
     const serviceRoleKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    const opts = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      realtime: { transport: WebSocket as any },
+
+    const opts: any = {
+      realtime: { transport: WebSocket },
     };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     this.db = createClient(url, serviceRoleKey, opts);
