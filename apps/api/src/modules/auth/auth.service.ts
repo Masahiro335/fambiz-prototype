@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  SupabaseClient,
+  SupabaseClientOptions,
+  type WebSocketLikeConstructor,
+} from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import { User } from '@fambiz/types';
 import { RegisterDto } from './dto/register.dto';
@@ -33,13 +38,12 @@ export class AuthService {
     const url = this.configService.getOrThrow<string>('SUPABASE_URL');
     const serviceRoleKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    const opts: any = {
-      realtime: { transport: WebSocket },
+    // ws パッケージの WebSocket を Supabase が要求する型に変換（Node.js 20 対応）
+    const opts: SupabaseClientOptions<'public'> = {
+      realtime: { transport: WebSocket as unknown as WebSocketLikeConstructor },
     };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    this.db = createClient(url, serviceRoleKey, opts);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    this.supabase = createClient(url, serviceRoleKey, opts);
+    this.db = createClient<any, 'public'>(url, serviceRoleKey, opts);
+    this.supabase = createClient<any, 'public'>(url, serviceRoleKey, opts);
   }
 
   /**
