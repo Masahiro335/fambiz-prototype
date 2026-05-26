@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 import { User } from '@fambiz/types';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,16 +16,30 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
-  /** service_role key を使った管理者用 Supabase クライアント（RLS をバイパス） */
+  /**
+   * DBクエリ専用クライアント（service_role、RLSバイパス）。
+   * signInWithPassword を呼ばないことで auth 状態を service_role のまま維持する。
+   */
+  private readonly db: SupabaseClient<any>;
 
+  /**
+   * Auth操作専用クライアント（service_role）。
+   * signInWithPassword / signOut / admin.createUser を担当。
+   * signIn 後に auth 状態が変わっても db クライアントに影響しない。
+   */
   private readonly supabase: SupabaseClient<any>;
 
   constructor(private readonly configService: ConfigService) {
+    const url = this.configService.getOrThrow<string>('SUPABASE_URL');
+    const serviceRoleKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const opts = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      realtime: { transport: WebSocket as any },
+    };
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    this.supabase = createClient(
-      this.configService.getOrThrow<string>('SUPABASE_URL'),
-      this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
-    );
+    this.db = createClient(url, serviceRoleKey, opts);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    this.supabase = createClient(url, serviceRoleKey, opts);
   }
 
   /**
@@ -35,7 +50,7 @@ export class AuthService {
    */
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     // 既存ユーザーの重複確認（public.users をチェック）
-    const { data: existingUser } = await this.supabase
+    const { data: existingUser } = await this.db
       .from('users')
       .select('id')
       .eq('email', dto.email)
@@ -65,7 +80,7 @@ export class AuthService {
 
     // public.users テーブルへのプロフィール挿入
     // （DB トリガーが既に作成している場合は ON CONFLICT DO NOTHING で安全に処理）
-    const { error: profileError } = await this.supabase.from('users').upsert(
+    const { error: profileError } = await this.db.from('users').upsert(
       {
         id: authUserId,
         email: dto.email,
@@ -157,7 +172,7 @@ export class AuthService {
     if (dto.avatarUrl !== undefined) updateData['avatar_url'] = dto.avatarUrl;
     if (dto.comment !== undefined) updateData['comment'] = dto.comment;
 
-    const { error } = await this.supabase
+    const { error } = await this.db
       .from('users')
       .update(updateData)
       .eq('id', userId)
@@ -177,7 +192,7 @@ export class AuthService {
    */
   async deleteMe(userId: string): Promise<{ message: string }> {
     // ソフトデリート: public.users の deleted_flag を true に更新
-    const { error: updateError } = await this.supabase
+    const { error: updateError } = await this.db
       .from('users')
       .update({ deleted_flag: true })
       .eq('id', userId)
@@ -202,7 +217,7 @@ export class AuthService {
    * deleted_flag = false のユーザーのみ取得可能。
    */
   private async getUserProfile(userId: string): Promise<User> {
-    const { data, error } = await this.supabase
+    const { data, error } = await this.db
       .from('users')
       .select('id, email, name, role, avatar_url, comment, created_at, updated_at')
       .eq('id', userId)
