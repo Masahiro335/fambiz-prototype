@@ -20,11 +20,11 @@
 
 ### リポジトリ・モノレポ設定
 
-- [ ] 🔴 pnpm workspaces + Turborepo の初期セットアップ
-- [ ] 🔴 `packages/types` の作成（共有型定義の骨格）
-- [ ] 🔴 `packages/eslint-config` の作成
-- [ ] 🔴 `packages/tsconfig` の作成（strict: true）
-- [ ] 🔴 `turbo.json` のタスクグラフ定義（build/lint/test）
+- [x] 🔴 pnpm workspaces + Turborepo の初期セットアップ
+- [x] 🔴 `packages/types` の作成（共有型定義の骨格）
+- [x] 🔴 `packages/eslint-config` の作成
+- [x] 🔴 `packages/tsconfig` の作成（strict: true）
+- [x] 🔴 `turbo.json` のタスクグラフ定義（build/lint/test）
 
 ### CI/CD
 
