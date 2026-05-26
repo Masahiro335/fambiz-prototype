@@ -8,9 +8,9 @@ on:
       - 'fix/**'
   pull_request:
     branches:
-  workflow_dispatch:
       - develop
       - main
+  workflow_dispatch:
 
 # 同一ブランチへの連続プッシュ時に古いジョブをキャンセル
 concurrency:
