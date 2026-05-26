@@ -46,22 +46,22 @@
 
 ### バックエンド（NestJS）
 
-- [ ] 🔴 `apps/api/src/modules/auth/` モジュール作成
-- [ ] 🔴 FUN-AUTH-001: ユーザー登録API（API-AUTH-001）— ID/パスワード
-- [ ] 🔴 FUN-AUTH-002: ログインAPI（API-AUTH-002）— Supabase Auth連携
-- [ ] 🔴 FUN-AUTH-003: ログアウトAPI（API-AUTH-003）
-- [ ] 🔴 FUN-AUTH-006: プロフィール登録・更新API（API-AUTH-006）— 名前・アイコン・role設定
-- [ ] 🔴 FUN-AUTH-007: ユーザー削除API（API-AUTH-007）
-- [ ] 🔴 `JwtAuthGuard` の実装（Supabase JWT検証）
-- [ ] 🔴 `RolesGuard` の実装（parent / child ロール制御）
+- [x] 🔴 `apps/api/src/modules/auth/` モジュール作成
+- [x] 🔴 FUN-AUTH-001: ユーザー登録API（API-AUTH-001）— ID/パスワード
+- [x] 🔴 FUN-AUTH-002: ログインAPI（API-AUTH-002）— Supabase Auth連携
+- [x] 🔴 FUN-AUTH-003: ログアウトAPI（API-AUTH-003）
+- [x] 🔴 FUN-AUTH-006: プロフィール登録・更新API（API-AUTH-006）— 名前・アイコン・role設定
+- [x] 🔴 FUN-AUTH-007: ユーザー削除API（API-AUTH-007）
+- [x] 🔴 `JwtAuthGuard` の実装（Supabase JWT検証）
+- [x] 🔴 `RolesGuard` の実装（parent / child ロール制御）
 
 ### フロントエンド（Next.js）
 
-- [ ] 🔴 `apps/web/src/lib/supabase.ts` — browser/serverクライアント設定
-- [ ] 🔴 SCR-AUTH-001: 会員登録画面（FUN-AUTH-001）
-- [ ] 🔴 SCR-AUTH-002: ログイン画面（FUN-AUTH-002）
-- [ ] 🔴 SCR-AUTH-003: プロフィール登録画面（FUN-AUTH-006）
-- [ ] 🔴 認証状態のミドルウェア（未ログイン時のリダイレクト）
+- [x] 🔴 `apps/web/src/lib/supabase.ts` — browser/serverクライアント設定
+- [x] 🔴 SCR-AUTH-001: 会員登録画面（FUN-AUTH-001）
+- [x] 🔴 SCR-AUTH-002: ログイン画面（FUN-AUTH-002）
+- [x] 🔴 SCR-AUTH-003: プロフィール登録画面（FUN-AUTH-006）
+- [x] 🔴 認証状態のミドルウェア（未ログイン時のリダイレクト）
 
 ---
 

@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * JWTペイロードを検証し、request.user にセットする値を返す。
    * Supabase JWT の sub は auth.users の UUID。
    */
-  async validate(payload: Record<string, unknown>): Promise<JwtPayload> {
+  validate(payload: Record<string, unknown>): JwtPayload {
     // 必須クレームの存在確認
     if (!payload.sub || !payload.email) {
       throw new UnauthorizedException('不正なJWTペイロードです');

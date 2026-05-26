@@ -9,12 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -98,10 +93,7 @@ export class AuthController {
   @ApiOperation({ summary: '自分のプロフィール更新' })
   @ApiResponse({ status: 200, description: 'プロフィール更新成功' })
   @ApiResponse({ status: 401, description: '未認証' })
-  async updateMe(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: ProfileUpdateDto,
-  ): Promise<User> {
+  async updateMe(@CurrentUser() user: JwtPayload, @Body() dto: ProfileUpdateDto): Promise<User> {
     return this.authService.updateMe(user.sub, dto);
   }
 

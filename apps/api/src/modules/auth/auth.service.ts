@@ -16,9 +16,11 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 @Injectable()
 export class AuthService {
   /** service_role key を使った管理者用 Supabase クライアント（RLS をバイパス） */
-  private readonly supabase: SupabaseClient;
+
+  private readonly supabase: SupabaseClient<any>;
 
   constructor(private readonly configService: ConfigService) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     this.supabase = createClient(
       this.configService.getOrThrow<string>('SUPABASE_URL'),
       this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
@@ -211,6 +213,6 @@ export class AuthService {
       throw new NotFoundException('ユーザーが見つかりません');
     }
 
-    return data as User;
+    return data;
   }
 }

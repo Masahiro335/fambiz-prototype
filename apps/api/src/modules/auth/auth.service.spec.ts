@@ -286,9 +286,7 @@ describe('AuthService', () => {
       // getUserProfile 用
       const profileBuilder = createReadBuilder({ data: updatedUser, error: null });
 
-      mockFrom
-        .mockReturnValueOnce(updateBuilder)
-        .mockReturnValueOnce(profileBuilder);
+      mockFrom.mockReturnValueOnce(updateBuilder).mockReturnValueOnce(profileBuilder);
 
       const result = await service.updateMe(mockUser.id, updateDto);
 
