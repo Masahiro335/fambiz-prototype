@@ -8,6 +8,7 @@ on:
       - 'fix/**'
   pull_request:
     branches:
+  workflow_dispatch:
       - develop
       - main
 
