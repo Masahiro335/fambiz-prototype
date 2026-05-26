@@ -10,6 +10,7 @@ on:
     branches:
       - develop
       - main
+  workflow_dispatch:
 
 # 同一ブランチへの連続プッシュ時に古いジョブをキャンセル
 concurrency:
