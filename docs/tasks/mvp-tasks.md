@@ -69,8 +69,8 @@
 
 ### バックエンド（NestJS）
 
-- [ ] 🔴 `apps/api/src/modules/family/` モジュール作成
-- [ ] 🔴 FUN-GROUP-001: 家族グループ登録API（API-GROUP-001）
+- [x] 🔴 `apps/api/src/modules/family/` モジュール作成
+- [x] 🔴 FUN-GROUP-001: 家族グループ登録API（API-GROUP-001）
 - [ ] 🔴 FUN-GROUP-002: 家族メンバー一覧API（API-GROUP-002）
 - [ ] 🔴 FUN-GROUP-003: 家族メンバー詳細API（API-GROUP-003）
 - [ ] 🔴 FUN-GROUP-004: QRコード招待生成API（API-GROUP-004）
