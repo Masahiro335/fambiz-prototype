@@ -7,7 +7,7 @@ import {
   type WebSocketLikeConstructor,
 } from '@supabase/supabase-js';
 import WebSocket from 'ws';
-import type { Group } from '@fambiz/types';
+import type { Group, GroupMember } from '@fambiz/types';
 
 /**
  * 家族グループのデータアクセスを担当するリポジトリ。
@@ -88,6 +88,29 @@ export class FamilyRepository {
     if (error) {
       throw new InternalServerErrorException('グループメンバーの追加に失敗しました');
     }
+  }
+
+  /**
+   * 指定したグループに所属するメンバー一覧を取得する。
+   * users テーブルを JOIN してユーザー情報も含めて返す。
+   * @param groupId - グループID
+   * @returns グループメンバーの配列（参加日時昇順）
+   */
+  async findGroupMembers(groupId: string): Promise<GroupMember[]> {
+    const { data, error } = await this.db
+      .from('group_members')
+      .select(
+        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+      )
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .order('joined_at', { ascending: true });
+
+    if (error) {
+      throw new InternalServerErrorException('グループメンバーの取得に失敗しました');
+    }
+
+    return (data ?? []) as unknown as GroupMember[];
   }
 
   /**

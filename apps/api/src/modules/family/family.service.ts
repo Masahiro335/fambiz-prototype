@@ -1,5 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import type { Group } from '@fambiz/types';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import type { Group, GroupMember, JwtPayload } from '@fambiz/types';
 import { FamilyRepository } from './family.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
 
@@ -40,5 +40,25 @@ export class FamilyService {
     await this.familyRepository.updateUserFamilyGroupId(ownerId, group.id);
 
     return group;
+  }
+
+  /**
+   * 家族グループのメンバー一覧を取得する。
+   *
+   * セキュリティチェック:
+   * - リクエストユーザーの family_group_id と指定した groupId が一致しない場合は ForbiddenException をスロー
+   * - 他家族グループへのアクセスを絶対に許容しない（業務ルール必須）
+   *
+   * @param groupId - 取得対象のグループID
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns グループメンバーの配列（参加日時昇順）
+   */
+  async findGroupMembers(groupId: string, user: JwtPayload): Promise<GroupMember[]> {
+    // 自分が所属するグループ以外へのアクセスを禁止する
+    if (user.family_group_id !== groupId) {
+      throw new ForbiddenException('他の家族グループのメンバーは参照できません');
+    }
+
+    return this.familyRepository.findGroupMembers(groupId);
   }
 }
