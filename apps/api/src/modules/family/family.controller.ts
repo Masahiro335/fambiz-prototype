@@ -15,7 +15,7 @@ import type { JwtPayload } from '@fambiz/types';
  * 全エンドポイントで JwtAuthGuard + RolesGuard を適用する。
  */
 @ApiTags('groups')
-@Controller('v1/groups')
+@Controller('groups')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class FamilyController {

@@ -61,7 +61,8 @@ export function CreateGroupForm() {
         return;
       }
 
-      // 作成成功後は /family にリダイレクトしてページを再取得する
+      // JWTに family_group_id を反映させるためトークンをリフレッシュしてからリダイレクト
+      await supabase.auth.refreshSession();
       router.push('/family');
       router.refresh();
     } catch {
