@@ -66,7 +66,12 @@
   // コンテナ作成後に pnpm・Supabase CLI をインストールしてから依存パッケージを解決する
   // corepack: Node.js 20 に同梱のパッケージマネージャー管理ツールで pnpm を有効化
   // supabase: npm 経由で公式 Supabase CLI をインストール（devcontainers-contrib feature が非推奨のため）
-  "postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && npm install -g supabase && pnpm install",
+  "postCreateCommand": "sudo corepack enable && corepack prepare pnpm@latest --activate && npm install -g supabase && pnpm install",
 
-  "remoteUser": "node"
+  "remoteUser": "node",
+
+  // GitHub Codespaces: 最低 8GB RAM のマシンを要求（2GB では Next.js + NestJS の同時起動で OOM になるため）
+  "hostRequirements": {
+    "memory": "8gb"
+  }
 }
