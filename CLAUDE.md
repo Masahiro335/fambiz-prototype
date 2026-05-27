@@ -230,6 +230,9 @@ pnpm supabase db push
 |---|---|
 | `fambiz-implement` | NestJS / Next.js の実装手順・必須コードパターン・業務ルール遵守チェックリスト |
 | `fambiz-security` | 認証認可・`family_group_id` 分離・計算精度・タイムゾーンの4項目チェック表 |
+| `fambiz-testing` | NestJS Service ユニットテストのモックパターン・ステータス遷移テストテンプレート |
+| `fambiz-types` | `packages/types` 共有型の追加・変更手順・型設計規約 |
+| `fambiz-migration` | Supabase マイグレーション SQL テンプレート・RLS ポリシーパターン |
 
 スキルはスラッシュコマンドのサブエージェントから自動参照される他、通常の実装作業中にも適宜使用する。
 
