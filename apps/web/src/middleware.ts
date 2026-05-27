@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-const PROTECTED_PATHS = ['/dashboard'];
+const PROTECTED_PATHS = ['/family', '/tasks', '/goals', '/rewards'];
 
 function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_PATHS.some((path) => pathname.startsWith(path));
