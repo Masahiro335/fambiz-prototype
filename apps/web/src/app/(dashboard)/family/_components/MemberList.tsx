@@ -94,7 +94,12 @@ export function MemberList({ members, groupName, currentUserRole }: MemberListPr
                 {/* メンバー情報 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-800">{user.name}</span>
+                    <Link
+                      href={`/family/members/${member.user_id}`}
+                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {user.name}
+                    </Link>
                     {/* ロールバッジ */}
                     <span
                       className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${

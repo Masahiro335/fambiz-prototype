@@ -66,4 +66,22 @@ export class FamilyController {
   ): Promise<GroupMemberResponseDto[]> {
     return this.familyService.findGroupMembers(groupId, user);
   }
+
+  /**
+   * 家族グループの特定メンバー詳細を取得する（親・子どちらもアクセス可能）。
+   * 自分が所属するグループ以外へのアクセスは 403 エラーを返す。
+   */
+  @Get(':groupId/members/:userId')
+  @ApiOperation({ summary: '家族メンバー詳細取得（FUN-GROUP-003）' })
+  @ApiResponse({ status: 200, description: 'メンバー詳細取得成功', type: GroupMemberResponseDto })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（他グループへのアクセス）' })
+  @ApiResponse({ status: 404, description: 'メンバーが存在しない' })
+  async findGroupMember(
+    @Param('groupId') groupId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<GroupMemberResponseDto> {
+    return this.familyService.findGroupMember(groupId, userId, user);
+  }
 }
