@@ -71,7 +71,7 @@
 
 - [x] 🔴 `apps/api/src/modules/family/` モジュール作成
 - [x] 🔴 FUN-GROUP-001: 家族グループ登録API（API-GROUP-001）
-- [ ] 🔴 FUN-GROUP-002: 家族メンバー一覧API（API-GROUP-002）
+- [x] 🔴 FUN-GROUP-002: 家族メンバー一覧API（API-GROUP-002）
 - [ ] 🔴 FUN-GROUP-003: 家族メンバー詳細API（API-GROUP-003）
 - [ ] 🔴 FUN-GROUP-004: QRコード招待生成API（API-GROUP-004）
 - [ ] 🔴 FUN-GROUP-005: QRコードからグループ参加API（API-GROUP-005）
@@ -79,7 +79,7 @@
 
 ### フロントエンド（Next.js）
 
-- [ ] 🔴 SCR-GROUP-001: 家族メンバー一覧画面
+- [x] 🔴 SCR-GROUP-001: 家族メンバー一覧画面
 - [ ] 🔴 SCR-GROUP-003: 家族グループ招待画面（QRコード表示）
 - [ ] 🔴 SCR-GROUP-004: 家族グループ参加画面（QRコードスキャン）
 - [ ] 🟡 SCR-GROUP-002: 家族メンバー詳細画面

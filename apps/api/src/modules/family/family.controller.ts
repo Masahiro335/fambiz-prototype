@@ -1,8 +1,18 @@
-import { Controller, Post, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { FamilyService } from './family.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { GroupResponseDto } from './dto/group-response.dto';
+import { GroupMemberResponseDto } from './dto/group-member-response.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
@@ -38,5 +48,22 @@ export class FamilyController {
     @CurrentUser() user: JwtPayload,
   ): Promise<GroupResponseDto> {
     return this.familyService.createGroup(dto, user.sub);
+  }
+
+  /**
+   * 家族グループのメンバー一覧を取得する（親・子どちらもアクセス可能）。
+   * 自分が所属するグループ以外へのアクセスは 403 エラーを返す。
+   */
+  @Get(':groupId/members')
+  @ApiOperation({ summary: '家族メンバー一覧取得（FUN-GROUP-002）' })
+  @ApiResponse({ status: 200, description: 'メンバー一覧取得成功', type: [GroupMemberResponseDto] })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（他グループへのアクセス）' })
+  @ApiResponse({ status: 404, description: 'グループが存在しない' })
+  async findGroupMembers(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<GroupMemberResponseDto[]> {
+    return this.familyService.findGroupMembers(groupId, user);
   }
 }

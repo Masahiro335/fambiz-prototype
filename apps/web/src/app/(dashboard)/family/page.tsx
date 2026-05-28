@@ -1,6 +1,8 @@
 import { createServerClient } from '@/lib/supabase/server';
-import type { JwtPayload } from '@fambiz/types';
+import type { GroupMember, JwtPayload } from '@fambiz/types';
+import { apiFetch } from '@/lib/api/fetcher';
 import { CreateGroupForm } from './_components/CreateGroupForm';
+import { MemberList } from './_components/MemberList';
 
 // 家族グループ管理ページ（Server Component）
 export default async function FamilyPage() {
@@ -34,18 +36,36 @@ export default async function FamilyPage() {
     familyGroupId = metadata.family_group_id ?? null;
   }
 
+  // グループ参加済みの場合はメンバー一覧とグループ名を並列取得する
+  let members: GroupMember[] = [];
+  let groupName = '家族グループ';
+
+  if (familyGroupId) {
+    // メンバー一覧APIとSupabaseのグループ名クエリを並列で実行する
+    const [fetchedMembers, groupResult] = await Promise.all([
+      apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`),
+      supabase.from('groups').select('group_name').eq('id', familyGroupId).single(),
+    ]);
+
+    members = fetchedMembers;
+
+    // グループ名が取得できた場合は上書き、失敗時はフォールバック値を維持する
+    if (groupResult.data?.group_name) {
+      groupName = groupResult.data.group_name;
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">家族管理</h2>
 
       {familyGroupId ? (
-        // グループ参加済みの場合のメッセージ（後続タスクで詳細実装）
-        <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
-          <p className="text-gray-700 font-medium">グループに参加済みです。</p>
-          <p className="text-sm text-gray-500 mt-1">
-            グループ詳細の機能は今後追加予定です。
-          </p>
-        </div>
+        // グループ参加済みの場合はメンバー一覧を表示する
+        <MemberList
+          members={members}
+          groupName={groupName}
+          currentUserRole={role ?? 'child'}
+        />
       ) : role === 'parent' ? (
         // グループ未所属の親ユーザーにグループ作成フォームを表示する
         <CreateGroupForm />
