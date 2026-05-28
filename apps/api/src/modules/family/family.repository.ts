@@ -114,6 +114,31 @@ export class FamilyRepository {
   }
 
   /**
+   * 指定したグループに所属する特定メンバーを1件取得する。
+   * users テーブルを JOIN してユーザー情報も含めて返す。
+   * @param groupId - グループID
+   * @param userId - ユーザーID
+   * @returns グループメンバー（存在しない場合は null）
+   */
+  async findGroupMemberById(groupId: string, userId: string): Promise<GroupMember | null> {
+    const { data, error } = await this.db
+      .from('group_members')
+      .select(
+        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+      )
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('グループメンバーの取得に失敗しました');
+    }
+
+    return (data ?? null) as unknown as GroupMember | null;
+  }
+
+  /**
    * users テーブルの family_group_id を更新する。
    * ※ users テーブルには family_group_id カラムが存在しないため、
    *    group_members への INSERT のみで JWT カスタムクレームフック（custom_access_token_hook）が

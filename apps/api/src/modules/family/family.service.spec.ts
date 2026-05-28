@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { FamilyService } from './family.service';
 import { FamilyRepository } from './family.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
@@ -15,6 +15,7 @@ const mockFamilyRepository = {
   addGroupMember: jest.fn(),
   updateUserFamilyGroupId: jest.fn(),
   findGroupMembers: jest.fn(),
+  findGroupMemberById: jest.fn(),
 };
 
 // =========================================================================
@@ -235,6 +236,85 @@ describe('FamilyService', () => {
 
       expect(result).toEqual(mockMembers);
       expect(mockFamilyRepository.findGroupMembers).toHaveBeenCalledWith(groupId);
+    });
+  });
+
+  // =========================================================================
+  // findGroupMember
+  // =========================================================================
+
+  describe('findGroupMember', () => {
+    const groupId = 'group-id-001';
+    const userId = 'user-id-001';
+
+    // テスト用の JwtPayload（自分のグループに所属するユーザー）
+    const authorizedUser: JwtPayload = {
+      sub: 'user-id-001',
+      email: 'parent@example.com',
+      name: '山田太郎',
+      role: 'parent',
+      family_group_id: groupId,
+    };
+
+    // テスト用のグループメンバーデータ（1件）
+    const mockMember: GroupMember = {
+      id: 'member-id-001',
+      group_id: groupId,
+      user_id: userId,
+      joined_at: '2026-01-01T00:00:00Z',
+      user: {
+        id: userId,
+        email: 'parent@example.com',
+        name: '山田太郎',
+        role: 'parent',
+        avatar_url: null,
+        comment: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    };
+
+    it('正常系: 自グループのメンバー詳細を取得できること', async () => {
+      mockFamilyRepository.findGroupMemberById.mockResolvedValue(mockMember);
+
+      const result = await service.findGroupMember(groupId, userId, authorizedUser);
+
+      expect(result).toEqual(mockMember);
+      // 正しい groupId・userId でリポジトリが呼ばれること
+      expect(mockFamilyRepository.findGroupMemberById).toHaveBeenCalledWith(groupId, userId);
+    });
+
+    it('異常系: family_group_id 不一致で ForbiddenException をスロー', async () => {
+      // 別グループのユーザーがアクセスしようとする
+      const unauthorizedUser: JwtPayload = {
+        sub: 'user-id-999',
+        email: 'other@example.com',
+        name: '他家族ユーザー',
+        role: 'parent',
+        family_group_id: 'other-group-id-999', // 異なるグループID
+      };
+
+      await expect(service.findGroupMember(groupId, userId, unauthorizedUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      // リポジトリは呼ばれないこと（セキュリティチェックで弾かれる）
+      expect(mockFamilyRepository.findGroupMemberById).not.toHaveBeenCalled();
+    });
+
+    it('異常系: 存在しない userId で NotFoundException をスロー', async () => {
+      // リポジトリが null を返す（メンバーが存在しない）
+      mockFamilyRepository.findGroupMemberById.mockResolvedValue(null);
+
+      await expect(
+        service.findGroupMember(groupId, 'non-existent-user-id', authorizedUser),
+      ).rejects.toThrow(NotFoundException);
+
+      // リポジトリは呼ばれること
+      expect(mockFamilyRepository.findGroupMemberById).toHaveBeenCalledWith(
+        groupId,
+        'non-existent-user-id',
+      );
     });
   });
 });
