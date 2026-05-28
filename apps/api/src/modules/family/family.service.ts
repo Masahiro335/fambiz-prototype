@@ -1,7 +1,9 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import type { Group, GroupMember, JwtPayload } from '@fambiz/types';
 import { FamilyRepository } from './family.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { InviteResponseDto } from './dto/invite-response.dto';
 
 /**
  * 家族グループのビジネスロジックを担当するサービス。
@@ -86,5 +88,31 @@ export class FamilyService {
     }
 
     return member;
+  }
+
+  /**
+   * 家族グループの招待トークンを生成して保存する（FUN-GROUP-004）。
+   * 親のみ実行可能。リクエストユーザーが対象グループに所属していない場合は ForbiddenException をスロー。
+   *
+   * @param groupId - 招待対象のグループID
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns 招待トークンと有効期限（現在時刻 + 24時間）
+   */
+  async generateInviteCode(groupId: string, user: JwtPayload): Promise<InviteResponseDto> {
+    // 自分が所属するグループ以外への操作を禁止する
+    if (user.family_group_id !== groupId) {
+      throw new ForbiddenException('他の家族グループは操作できません');
+    }
+
+    // Node.js 組み込み crypto でランダムなトークンを生成する
+    const inviteCode = randomBytes(32).toString('hex');
+
+    // 生成したトークンをDBに保存する
+    await this.familyRepository.saveInviteCode(groupId, inviteCode);
+
+    // 有効期限は現在時刻 + 24時間
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    return { inviteCode, expiresAt };
   }
 }

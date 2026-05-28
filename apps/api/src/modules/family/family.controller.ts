@@ -13,6 +13,7 @@ import { FamilyService } from './family.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { GroupResponseDto } from './dto/group-response.dto';
 import { GroupMemberResponseDto } from './dto/group-member-response.dto';
+import { InviteResponseDto } from './dto/invite-response.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
@@ -83,5 +84,23 @@ export class FamilyController {
     @CurrentUser() user: JwtPayload,
   ): Promise<GroupMemberResponseDto> {
     return this.familyService.findGroupMember(groupId, userId, user);
+  }
+
+  /**
+   * 家族グループの招待トークンを発行する（親のみ・FUN-GROUP-004）。
+   * 生成したトークンはQRコードに埋め込んで使用する。有効期限は発行から24時間。
+   */
+  @Post(':groupId/invite')
+  @Roles('parent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '招待トークン発行（FUN-GROUP-004）' })
+  @ApiResponse({ status: 200, description: '招待トークン発行成功', type: InviteResponseDto })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（子ユーザーまたは他グループへの操作）' })
+  async generateInviteCode(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<InviteResponseDto> {
+    return this.familyService.generateInviteCode(groupId, user);
   }
 }

@@ -73,14 +73,14 @@
 - [x] 🔴 FUN-GROUP-001: 家族グループ登録API（API-GROUP-001）
 - [x] 🔴 FUN-GROUP-002: 家族メンバー一覧API（API-GROUP-002）
 - [x] 🔴 FUN-GROUP-003: 家族メンバー詳細API（API-GROUP-003）
-- [ ] 🔴 FUN-GROUP-004: QRコード招待生成API（API-GROUP-004）
+- [x] 🔴 FUN-GROUP-004: QRコード招待生成API（API-GROUP-004）
 - [ ] 🔴 FUN-GROUP-005: QRコードからグループ参加API（API-GROUP-005）
 - [ ] 🟡 FUN-GROUP-006: グループ脱退API（API-GROUP-006）
 
 ### フロントエンド（Next.js）
 
 - [x] 🔴 SCR-GROUP-001: 家族メンバー一覧画面
-- [ ] 🔴 SCR-GROUP-003: 家族グループ招待画面（QRコード表示）
+- [x] 🔴 SCR-GROUP-003: 家族グループ招待画面（QRコード表示）
 - [ ] 🔴 SCR-GROUP-004: 家族グループ参加画面（QRコードスキャン）
 - [x] 🟡 SCR-GROUP-002: 家族メンバー詳細画面
 - [ ] 🟡 SCR-GROUP-005: 家族グループ脱退画面

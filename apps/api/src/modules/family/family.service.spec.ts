@@ -16,6 +16,7 @@ const mockFamilyRepository = {
   updateUserFamilyGroupId: jest.fn(),
   findGroupMembers: jest.fn(),
   findGroupMemberById: jest.fn(),
+  saveInviteCode: jest.fn(),
 };
 
 // =========================================================================
@@ -315,6 +316,56 @@ describe('FamilyService', () => {
         groupId,
         'non-existent-user-id',
       );
+    });
+  });
+
+  // =========================================================================
+  // generateInviteCode
+  // =========================================================================
+
+  describe('generateInviteCode', () => {
+    const groupId = 'group-id-001';
+
+    // テスト用の JwtPayload（自分のグループに所属する親ユーザー）
+    const parentUser: JwtPayload = {
+      sub: 'owner-user-id',
+      email: 'parent@example.com',
+      name: '山田太郎',
+      role: 'parent',
+      family_group_id: groupId,
+    };
+
+    it('正常系: 親ユーザーが招待コードを生成できること', async () => {
+      mockFamilyRepository.saveInviteCode.mockResolvedValue(undefined);
+
+      const result = await service.generateInviteCode(groupId, parentUser);
+
+      // inviteCode が文字列であること
+      expect(typeof result.inviteCode).toBe('string');
+      // inviteCode が空でないこと（64文字の16進数文字列）
+      expect(result.inviteCode.length).toBeGreaterThan(0);
+      // expiresAt が文字列であること
+      expect(typeof result.expiresAt).toBe('string');
+      // saveInviteCode が正しい groupId とトークンで呼ばれること
+      expect(mockFamilyRepository.saveInviteCode).toHaveBeenCalledWith(groupId, result.inviteCode);
+    });
+
+    it('異常系: family_group_id 不一致で ForbiddenException をスロー', async () => {
+      // 別グループの親ユーザーがアクセスしようとする
+      const unauthorizedUser: JwtPayload = {
+        sub: 'user-id-999',
+        email: 'other@example.com',
+        name: '他家族ユーザー',
+        role: 'parent',
+        family_group_id: 'other-group-id-999', // 異なるグループID
+      };
+
+      await expect(service.generateInviteCode(groupId, unauthorizedUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      // リポジトリは呼ばれないこと（セキュリティチェックで弾かれる）
+      expect(mockFamilyRepository.saveInviteCode).not.toHaveBeenCalled();
     });
   });
 });
