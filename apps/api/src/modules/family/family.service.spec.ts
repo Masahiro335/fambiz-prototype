@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { FamilyService } from './family.service';
 import { FamilyRepository } from './family.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { JoinGroupDto } from './dto/join-group.dto';
 import type { Group, GroupMember, JwtPayload } from '@fambiz/types';
 
 // =========================================================================
@@ -17,6 +18,8 @@ const mockFamilyRepository = {
   findGroupMembers: jest.fn(),
   findGroupMemberById: jest.fn(),
   saveInviteCode: jest.fn(),
+  findGroupByInviteCode: jest.fn(),
+  findGroupMemberByUserId: jest.fn(),
 };
 
 // =========================================================================
@@ -316,6 +319,100 @@ describe('FamilyService', () => {
         groupId,
         'non-existent-user-id',
       );
+    });
+  });
+
+  // =========================================================================
+  // joinGroup
+  // =========================================================================
+
+  describe('joinGroup', () => {
+    const validInviteCode = 'valid-invite-code-abc123';
+
+    // グループ参加リクエスト DTO
+    const joinGroupDto: JoinGroupDto = {
+      inviteCode: validInviteCode,
+    };
+
+    // グループに未所属のユーザー（family_group_id は空文字で未所属を表現）
+    const newUser: JwtPayload = {
+      sub: 'new-user-id-001',
+      email: 'newuser@example.com',
+      name: '田中一郎',
+      role: 'child',
+      family_group_id: '',
+    };
+
+    // 参加先グループ（招待コードを持つ）
+    const targetGroup: Group = {
+      id: 'group-id-001',
+      group_name: '山田家',
+      invite_code: validInviteCode,
+      owner_id: 'owner-user-id',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+
+    // 参加後のメンバー情報
+    const newMember: GroupMember = {
+      id: 'member-id-new',
+      group_id: 'group-id-001',
+      user_id: 'new-user-id-001',
+      joined_at: '2026-05-28T00:00:00Z',
+      user: {
+        id: 'new-user-id-001',
+        email: 'newuser@example.com',
+        name: '田中一郎',
+        role: 'child',
+        avatar_url: null,
+        comment: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-05-28T00:00:00Z',
+      },
+    };
+
+    it('正常系: 未所属ユーザーが有効な招待コードでグループに参加できること', async () => {
+      // 未所属ユーザーなので findGroupMemberByUserId は null を返す
+      mockFamilyRepository.findGroupMemberByUserId
+        .mockResolvedValueOnce(null) // 参加前チェック
+        .mockResolvedValueOnce(newMember); // 参加後の取得
+      mockFamilyRepository.findGroupByInviteCode.mockResolvedValue(targetGroup);
+      mockFamilyRepository.addGroupMember.mockResolvedValue(undefined);
+
+      const result = await service.joinGroup(joinGroupDto, newUser);
+
+      expect(result).toEqual(newMember);
+      // 事前チェックでユーザーIDを確認すること
+      expect(mockFamilyRepository.findGroupMemberByUserId).toHaveBeenCalledWith(newUser.sub);
+      // 招待コードでグループを検索すること
+      expect(mockFamilyRepository.findGroupByInviteCode).toHaveBeenCalledWith(validInviteCode);
+      // 正しい groupId と userId でメンバーを追加すること
+      expect(mockFamilyRepository.addGroupMember).toHaveBeenCalledWith(targetGroup.id, newUser.sub);
+    });
+
+    it('異常系: 既にグループに所属している場合は BadRequestException をスロー', async () => {
+      // 既にメンバーとして存在する
+      mockFamilyRepository.findGroupMemberByUserId.mockResolvedValue(newMember);
+
+      await expect(service.joinGroup(joinGroupDto, newUser)).rejects.toThrow(BadRequestException);
+
+      // グループ検索・メンバー追加は呼ばれないこと
+      expect(mockFamilyRepository.findGroupByInviteCode).not.toHaveBeenCalled();
+      expect(mockFamilyRepository.addGroupMember).not.toHaveBeenCalled();
+    });
+
+    it('異常系: 無効な招待コードの場合は NotFoundException をスロー', async () => {
+      // 未所属ユーザー
+      mockFamilyRepository.findGroupMemberByUserId.mockResolvedValue(null);
+      // 招待コードに一致するグループが存在しない
+      mockFamilyRepository.findGroupByInviteCode.mockResolvedValue(null);
+
+      const invalidDto: JoinGroupDto = { inviteCode: 'invalid-code' };
+
+      await expect(service.joinGroup(invalidDto, newUser)).rejects.toThrow(NotFoundException);
+
+      // メンバー追加は呼ばれないこと
+      expect(mockFamilyRepository.addGroupMember).not.toHaveBeenCalled();
     });
   });
 

@@ -1,9 +1,15 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import type { Group, GroupMember, JwtPayload } from '@fambiz/types';
 import { FamilyRepository } from './family.repository';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteResponseDto } from './dto/invite-response.dto';
+import { JoinGroupDto } from './dto/join-group.dto';
 
 /**
  * 家族グループのビジネスロジックを担当するサービス。
@@ -85,6 +91,44 @@ export class FamilyService {
     const member = await this.familyRepository.findGroupMemberById(groupId, userId);
     if (!member) {
       throw new NotFoundException('メンバーが見つかりません');
+    }
+
+    return member;
+  }
+
+  /**
+   * 招待コードを使って家族グループに参加する（FUN-GROUP-005）。
+   *
+   * 処理順序:
+   * 1. ユーザーが既にグループに所属している場合は BadRequestException をスロー
+   * 2. 招待コードでグループを検索、存在しない場合は NotFoundException をスロー
+   * 3. group_members にユーザーを追加
+   * 4. 追加されたメンバーを取得して返す
+   *
+   * @param dto - グループ参加リクエスト DTO（inviteCode を含む）
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns 追加されたグループメンバーオブジェクト
+   */
+  async joinGroup(dto: JoinGroupDto, user: JwtPayload): Promise<GroupMember> {
+    // 既にグループに所属しているか確認する（二重参加を防止）
+    const existingMember = await this.familyRepository.findGroupMemberByUserId(user.sub);
+    if (existingMember) {
+      throw new BadRequestException('既に家族グループに参加しています');
+    }
+
+    // 招待コードでグループを検索する
+    const group = await this.familyRepository.findGroupByInviteCode(dto.inviteCode);
+    if (!group) {
+      throw new NotFoundException('招待コードが無効です');
+    }
+
+    // グループメンバーとして追加する
+    await this.familyRepository.addGroupMember(group.id, user.sub);
+
+    // 追加されたメンバー情報を取得して返す
+    const member = await this.familyRepository.findGroupMemberByUserId(user.sub);
+    if (!member) {
+      throw new NotFoundException('メンバー情報の取得に失敗しました');
     }
 
     return member;

@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { FamilyService } from './family.service';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { JoinGroupDto } from './dto/join-group.dto';
 import { GroupResponseDto } from './dto/group-response.dto';
 import { GroupMemberResponseDto } from './dto/group-member-response.dto';
 import { InviteResponseDto } from './dto/invite-response.dto';
@@ -49,6 +50,25 @@ export class FamilyController {
     @CurrentUser() user: JwtPayload,
   ): Promise<GroupResponseDto> {
     return this.familyService.createGroup(dto, user.sub);
+  }
+
+  /**
+   * 招待コードを使って家族グループに参加する（FUN-GROUP-005）。
+   * ロール制限なし（親・子どちらも参加可能）。
+   * 静的パス `/groups/join` を動的パス `/groups/:groupId` より先に定義する（NestJSルーティング優先順）。
+   */
+  @Post('join')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '家族グループ参加（FUN-GROUP-005）' })
+  @ApiResponse({ status: 200, description: 'グループ参加成功', type: GroupMemberResponseDto })
+  @ApiResponse({ status: 400, description: '既にグループに参加済み' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 404, description: '招待コードが無効' })
+  async joinGroup(
+    @Body() dto: JoinGroupDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<GroupMemberResponseDto> {
+    return this.familyService.joinGroup(dto, user);
   }
 
   /**
