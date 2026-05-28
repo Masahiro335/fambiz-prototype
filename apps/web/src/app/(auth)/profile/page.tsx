@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { UpdateUserDto, User } from '@fambiz/types';
 
@@ -13,6 +13,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next');
 
   // フォーム入力値の状態管理
   const [name, setName] = useState('');
@@ -121,8 +123,8 @@ export default function ProfilePage() {
         return;
       }
 
-      // ダッシュボードへリダイレクト
-      router.push('/dashboard');
+      // next パラメータがあればそこへ、なければ家族管理画面へリダイレクト
+      router.push(next && next.startsWith('/') ? next : '/family');
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { CreateUserDto, User } from '@fambiz/types';
 import type { UserRole } from '@fambiz/types';
@@ -16,6 +16,8 @@ interface RegisterResponse {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next');
 
   // フォーム入力値の状態管理
   const [email, setEmail] = useState('');
@@ -70,8 +72,8 @@ export default function RegisterPage() {
         refresh_token: data.refreshToken,
       });
 
-      // プロフィール登録画面へリダイレクト
-      router.push('/profile');
+      // プロフィール登録画面へリダイレクト（next があれば引き継ぐ）
+      router.push(next ? `/profile?next=${encodeURIComponent(next)}` : '/profile');
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
@@ -172,7 +174,10 @@ export default function RegisterPage() {
       {/* ログインへのリンク */}
       <p className="mt-6 text-center text-sm text-gray-600">
         すでにアカウントをお持ちの方は{' '}
-        <Link href="/login" className="text-blue-600 font-medium hover:underline">
+        <Link
+          href={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}
+          className="text-blue-600 font-medium hover:underline"
+        >
           ログインはこちら
         </Link>
       </p>
