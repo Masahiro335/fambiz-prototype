@@ -139,6 +139,24 @@ export class FamilyRepository {
   }
 
   /**
+   * グループの招待コードを更新する（FUN-GROUP-004）。
+   * groups テーブルの invite_code カラムを指定した inviteCode で UPDATE する。
+   * @param groupId - 更新対象のグループID
+   * @param inviteCode - 生成した招待トークン文字列
+   */
+  async saveInviteCode(groupId: string, inviteCode: string): Promise<void> {
+    const { error } = await this.db
+      .from('groups')
+      .update({ invite_code: inviteCode })
+      .eq('id', groupId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('招待コードの保存に失敗しました');
+    }
+  }
+
+  /**
    * users テーブルの family_group_id を更新する。
    * ※ users テーブルには family_group_id カラムが存在しないため、
    *    group_members への INSERT のみで JWT カスタムクレームフック（custom_access_token_hook）が
