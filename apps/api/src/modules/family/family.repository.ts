@@ -182,6 +182,25 @@ export class FamilyRepository {
   }
 
   /**
+   * 指定したグループのアクティブなメンバー数を取得する（プレビュー用）。
+   * @param groupId - グループID
+   * @returns メンバー数
+   */
+  async countGroupMembers(groupId: string): Promise<number> {
+    const { count, error } = await this.db
+      .from('group_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('メンバー数の取得に失敗しました');
+    }
+
+    return count ?? 0;
+  }
+
+  /**
    * グループの招待コードを更新する（FUN-GROUP-004）。
    * groups テーブルの invite_code カラムを指定した inviteCode で UPDATE する。
    * @param groupId - 更新対象のグループID

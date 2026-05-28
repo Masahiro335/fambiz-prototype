@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Query,
   Body,
   Param,
   UseGuards,
@@ -14,6 +15,7 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { JoinGroupDto } from './dto/join-group.dto';
 import { GroupResponseDto } from './dto/group-response.dto';
 import { GroupMemberResponseDto } from './dto/group-member-response.dto';
+import { GroupPreviewResponseDto } from './dto/group-preview-response.dto';
 import { InviteResponseDto } from './dto/invite-response.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -50,6 +52,22 @@ export class FamilyController {
     @CurrentUser() user: JwtPayload,
   ): Promise<GroupResponseDto> {
     return this.familyService.createGroup(dto, user.sub);
+  }
+
+  /**
+   * 招待コードでグループ情報をプレビュー取得する（参加前確認用）。
+   * RLS バイパスが必要なため、Supabase を直接使わず NestJS 経由で取得する。
+   * 静的パス `/groups/join/preview` を動的パス `/groups/:groupId` より先に定義する。
+   */
+  @Get('join/preview')
+  @ApiOperation({ summary: 'グループ参加プレビュー（招待コード確認）' })
+  @ApiResponse({ status: 200, description: 'グループ情報取得成功', type: GroupPreviewResponseDto })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 404, description: '招待コードが無効' })
+  async getGroupPreview(
+    @Query('inviteCode') inviteCode: string,
+  ): Promise<GroupPreviewResponseDto> {
+    return this.familyService.getGroupPreview(inviteCode);
   }
 
   /**

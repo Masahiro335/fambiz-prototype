@@ -97,6 +97,25 @@ export class FamilyService {
   }
 
   /**
+   * 招待コードでグループ情報をプレビュー取得する（参加前確認用）。
+   * RLS バイパスのため service_role クライアントを使用する。
+   * グループ未所属ユーザーからでも呼び出し可能。
+   *
+   * @param inviteCode - 招待トークン文字列
+   * @returns グループ名とメンバー数
+   */
+  async getGroupPreview(inviteCode: string): Promise<{ groupName: string; memberCount: number }> {
+    const group = await this.familyRepository.findGroupByInviteCode(inviteCode);
+    if (!group) {
+      throw new NotFoundException('招待コードが無効です');
+    }
+
+    const memberCount = await this.familyRepository.countGroupMembers(group.id);
+
+    return { groupName: group.group_name, memberCount };
+  }
+
+  /**
    * 招待コードを使って家族グループに参加する（FUN-GROUP-005）。
    *
    * 処理順序:
