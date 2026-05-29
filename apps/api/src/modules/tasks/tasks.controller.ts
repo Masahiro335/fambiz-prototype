@@ -1,0 +1,96 @@
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { TasksService } from './tasks.service';
+import { CreateTaskDto } from './dto/create-task.dto';
+import { TaskResponseDto } from './dto/task-response.dto';
+import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
+import type { JwtPayload, TaskStatus } from '@fambiz/types';
+
+/**
+ * タスク管理コントローラー（FUN-TASK-001）。
+ * タスクの作成・一覧取得・詳細取得エンドポイントを提供する。
+ * 全エンドポイントで JwtAuthGuard + RolesGuard を適用する。
+ */
+@ApiTags('tasks')
+@Controller('tasks')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
+export class TasksController {
+  constructor(private readonly tasksService: TasksService) {}
+
+  /**
+   * タスクを新規作成する（親のみ）。
+   * リクエストの groupId が自分の所属グループと異なる場合は 403 エラーを返す。
+   */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @Roles('parent')
+  @ApiOperation({ summary: 'タスク作成（FUN-TASK-001・親のみ）' })
+  @ApiResponse({ status: 201, description: 'タスク作成成功', type: TaskResponseDto })
+  @ApiResponse({ status: 400, description: 'バリデーションエラー' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（子はアクセス不可・他グループへの操作）' })
+  async createTask(
+    @Body() dto: CreateTaskDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<TaskResponseDto> {
+    return this.tasksService.createTask(dto, user);
+  }
+
+  /**
+   * タスク一覧を取得する（親・子どちらもアクセス可能）。
+   * groupId パラメータが自分の所属グループと異なる場合は 403 エラーを返す。
+   */
+  @Get()
+  @ApiOperation({ summary: 'タスク一覧取得（FUN-TASK-001）' })
+  @ApiQuery({ name: 'groupId', required: true, description: '家族グループID（UUID）' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'タスクステータスフィルタ',
+    enum: ['pending', 'reported', 'completed', 'cancelled', 'expired'],
+  })
+  @ApiQuery({ name: 'assigneeId', required: false, description: '担当者ユーザーID（UUID）' })
+  @ApiQuery({ name: 'keyword', required: false, description: 'キーワード検索（タスク名部分一致）' })
+  @ApiResponse({ status: 200, description: 'タスク一覧取得成功', type: [TaskResponseDto] })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（他グループへのアクセス）' })
+  async findAll(
+    @Query('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: TaskStatus,
+    @Query('assigneeId') assigneeId?: string,
+    @Query('keyword') keyword?: string,
+  ): Promise<TaskResponseDto[]> {
+    return this.tasksService.findAll(groupId, user, status, assigneeId, keyword);
+  }
+
+  /**
+   * タスクIDで特定のタスク詳細を取得する（親・子どちらもアクセス可能）。
+   * 他グループのタスクにアクセスしようとした場合は 404 エラーを返す。
+   */
+  @Get(':taskId')
+  @ApiOperation({ summary: 'タスク詳細取得（FUN-TASK-001）' })
+  @ApiResponse({ status: 200, description: 'タスク詳細取得成功', type: TaskResponseDto })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 404, description: 'タスクが存在しない' })
+  async findById(
+    @Param('taskId') taskId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<TaskResponseDto> {
+    return this.tasksService.findById(taskId, user);
+  }
+}

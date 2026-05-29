@@ -91,8 +91,8 @@
 
 ### バックエンド（NestJS）
 
-- [ ] 🔴 `apps/api/src/modules/tasks/` モジュール作成
-- [ ] 🔴 FUN-TASK-001: タスク登録API（API-TASK-001）— タイトル・説明・単価・期限・タイプ
+- [x] 🔴 `apps/api/src/modules/tasks/` モジュール作成
+- [x] 🔴 FUN-TASK-001: タスク登録API（API-TASK-001）— タイトル・説明・単価・期限・タイプ
 - [ ] 🔴 FUN-TASK-002: タスク編集API
 - [ ] 🔴 FUN-TASK-003: タスク削除API（API-TASK-002）
 - [ ] 🔴 FUN-TASK-004: タスクステータス変更API（API-TASK-003）— 承認・差し戻し・取り下げ
@@ -103,10 +103,10 @@
 
 ### フロントエンド（Next.js）
 
-- [ ] 🔴 SCR-TASK-001: タスク一覧画面（親用: 承認ボタン付き / 子用: 報告ボタン付き）
+- [~] 🔴 SCR-TASK-001: タスク一覧画面（親用: 承認ボタン付き / 子用: 報告ボタン付き）
 - [ ] 🔴 SCR-TASK-002: タスク詳細画面（ステータス表示・アクション）
 - [ ] 🟡 SCR-TASK-005: タスク検索画面
-- [ ] 🔴 `components/TaskCard` — タスクカードコンポーネント
+- [x] 🔴 `components/TaskCard` — タスクカードコンポーネント
 
 ---
 
