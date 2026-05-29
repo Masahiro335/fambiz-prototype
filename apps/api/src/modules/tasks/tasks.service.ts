@@ -105,6 +105,28 @@ export class TasksService {
   }
 
   /**
+   * タスクをソフトデリートする（FUN-TASK-003）。
+   *
+   * セキュリティチェック:
+   * - リポジトリ側で group_id フィルタを適用するため、他グループのタスクへの削除は不可
+   * - 削除結果が false の場合は対象タスクが存在しないとして NotFoundException をスロー
+   *
+   * @param taskId - 削除対象のタスクID
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns 削除完了メッセージ
+   * @throws NotFoundException タスクが存在しない、または他グループのタスクにアクセスした場合
+   */
+  async deleteTask(taskId: string, user: JwtPayload): Promise<{ message: string }> {
+    const deleted = await this.tasksRepository.deleteTask(taskId, user.family_group_id);
+
+    if (!deleted) {
+      throw new NotFoundException('タスクが見つかりません');
+    }
+
+    return { message: 'タスクを削除しました' };
+  }
+
+  /**
    * タスクIDで特定のタスク詳細を取得する（FUN-TASK-001）。
    * user.family_group_id でデータ分離フィルタを適用する。
    *

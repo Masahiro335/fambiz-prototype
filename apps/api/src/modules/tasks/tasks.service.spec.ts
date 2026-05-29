@@ -15,6 +15,7 @@ const mockTasksRepository = {
   findAll: jest.fn(),
   findById: jest.fn(),
   updateTask: jest.fn(),
+  deleteTask: jest.fn(),
 };
 
 // =========================================================================
@@ -270,6 +271,43 @@ describe('TasksService', () => {
         'non-existent-task-id',
         parentUser.family_group_id,
         expect.any(Object),
+      );
+    });
+  });
+
+  // =========================================================================
+  // deleteTask
+  // =========================================================================
+
+  describe('deleteTask', () => {
+    const taskId = 'task-id-001';
+
+    it('正常にタスクを削除できること', async () => {
+      // リポジトリが true を返す（削除成功）
+      mockTasksRepository.deleteTask.mockResolvedValue(true);
+
+      const result = await service.deleteTask(taskId, parentUser);
+
+      expect(result).toEqual({ message: 'タスクを削除しました' });
+      // 正しい引数でリポジトリが呼ばれること
+      expect(mockTasksRepository.deleteTask).toHaveBeenCalledWith(
+        taskId,
+        parentUser.family_group_id,
+      );
+    });
+
+    it('タスクが存在しない場合は NotFoundException をスロー', async () => {
+      // リポジトリが false を返す（タスクが存在しないまたは他グループのタスク）
+      mockTasksRepository.deleteTask.mockResolvedValue(false);
+
+      await expect(service.deleteTask('non-existent-task-id', parentUser)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      // リポジトリは呼ばれること
+      expect(mockTasksRepository.deleteTask).toHaveBeenCalledWith(
+        'non-existent-task-id',
+        parentUser.family_group_id,
       );
     });
   });

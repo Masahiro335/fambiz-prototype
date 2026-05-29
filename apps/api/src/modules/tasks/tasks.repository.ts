@@ -181,6 +181,31 @@ export class TasksRepository {
   }
 
   /**
+   * タスクをソフトデリートする（deleted_flag = true に更新）。
+   * group_id と deleted_flag フィルタで家族グループのデータ分離と二重削除を防止する。
+   * @param taskId - 削除対象のタスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @returns 削除に成功した場合は true、対象が存在しない場合は false
+   */
+  async deleteTask(taskId: string, groupId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .update({ deleted_flag: true })
+      // 家族グループ分離: 自グループのタスクのみ削除する
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの削除に失敗しました');
+    }
+
+    return data !== null;
+  }
+
+  /**
    * タスクIDで特定のタスクを1件取得する。
    * group_id フィルタで家族グループのデータ分離を保証する。
    * @param taskId - タスクID
