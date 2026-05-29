@@ -65,9 +65,7 @@ export class FamilyController {
   @ApiResponse({ status: 200, description: 'グループ情報取得成功', type: GroupPreviewResponseDto })
   @ApiResponse({ status: 401, description: '未認証' })
   @ApiResponse({ status: 404, description: '招待コードが無効' })
-  async getGroupPreview(
-    @Query('inviteCode') inviteCode: string,
-  ): Promise<GroupPreviewResponseDto> {
+  async getGroupPreview(@Query('inviteCode') inviteCode: string): Promise<GroupPreviewResponseDto> {
     return this.familyService.getGroupPreview(inviteCode);
   }
 

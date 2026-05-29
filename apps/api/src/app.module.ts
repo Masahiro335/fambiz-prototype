@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { validationSchema } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { FamilyModule } from './modules/family/family.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -17,6 +18,8 @@ import { FamilyModule } from './modules/family/family.module';
     AuthModule,
     // 家族グループ管理モジュール（FUN-GROUP-001〜006）
     FamilyModule,
+    // タスク管理モジュール（FUN-TASK-001〜007）
+    TasksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
