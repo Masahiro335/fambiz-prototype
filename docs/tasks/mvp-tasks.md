@@ -97,7 +97,7 @@
 - [x] 🔴 FUN-TASK-003: タスク削除API（API-TASK-002）
 - [x] 🔴 FUN-TASK-004: タスクステータス変更API（API-TASK-003）— 承認・差し戻し・取り下げ
 - [x] 🔴 FUN-TASK-006: タスク一覧API（API-TASK-005）
-- [ ] 🟡 FUN-TASK-005: タスクカレンダーAPI（API-TASK-004）
+- [x] 🟡 FUN-TASK-005: タスクカレンダーAPI（API-TASK-004）
 - [ ] 🟡 FUN-TASK-007: タスク検索API（API-TASK-007）
 - [x] 🔴 ステータス遷移バリデーション（重複報告禁止・期限切れ自動処理）
 

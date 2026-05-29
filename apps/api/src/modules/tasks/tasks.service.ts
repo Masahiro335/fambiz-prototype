@@ -60,6 +60,7 @@ export class TasksService {
    * @param status - タスクステータスフィルタ（任意）
    * @param assigneeId - 担当者フィルタ（任意）
    * @param keyword - キーワード検索（任意）
+   * @param month - カレンダー表示用の対象月（YYYY-MM形式・任意、FUN-TASK-005）
    * @returns タスクの配列
    */
   async findAll(
@@ -68,13 +69,14 @@ export class TasksService {
     status?: TaskStatus,
     assigneeId?: string,
     keyword?: string,
+    month?: string,
   ): Promise<Task[]> {
     // 自分が所属するグループ以外のタスク参照を禁止する
     if (groupId !== user.family_group_id) {
       throw new ForbiddenException('他の家族グループのタスクは参照できません');
     }
 
-    return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword });
+    return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword, month });
   }
 
   /**

@@ -214,6 +214,21 @@ describe('TasksService', () => {
       // リポジトリは呼ばれないこと（セキュリティチェックで弾かれる）
       expect(mockTasksRepository.findAll).not.toHaveBeenCalled();
     });
+
+    it('month フィルタを指定してタスク一覧を取得できること（FUN-TASK-005）', async () => {
+      mockTasksRepository.findAll.mockResolvedValue(mockTasks);
+
+      const result = await service.findAll(groupId, parentUser, undefined, undefined, undefined, '2026-05');
+
+      expect(result).toEqual(mockTasks);
+      expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
+        groupId,
+        status: undefined,
+        assigneeId: undefined,
+        keyword: undefined,
+        month: '2026-05',
+      });
+    });
   });
 
   // =========================================================================
