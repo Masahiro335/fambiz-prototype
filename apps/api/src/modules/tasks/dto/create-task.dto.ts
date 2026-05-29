@@ -3,7 +3,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsInt,
-  IsUUID,
   IsDateString,
   MaxLength,
   Min,
@@ -17,22 +16,22 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateTaskDto {
   @ApiProperty({
     example: 'group-uuid-001',
-    description: '家族グループID（UUID）',
+    description: '家族グループID（UUID形式の文字列）',
     format: 'uuid',
   })
-  @IsUUID()
+  @IsString()
   @IsNotEmpty()
   groupId: string;
 
   @ApiProperty({
     example: 'assignee-uuid-001',
-    description: '担当者（子）のユーザーID（UUID）。省略時は未割り当て。',
+    description: '担当者（子）のユーザーID（UUID形式の文字列）。省略時は未割り当て。',
     format: 'uuid',
     required: false,
     nullable: true,
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   assigneeId?: string;
 
   @ApiProperty({
