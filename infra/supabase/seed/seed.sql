@@ -3,8 +3,9 @@
 -- 実行: supabase db reset  または  supabase db seed
 --
 -- テストアカウント:
---   親: parent@example.com / Password123!
---   子: child@example.com  / Password123!
+--   親（グループ参加済み）: parent@example.com  / Password123!
+--   子（グループ参加済み）: child@example.com   / Password123!
+--   親（グループ未所属）  : parent2@example.com / Password123!  ← CreateGroupForm 確認用
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -55,14 +56,29 @@ VALUES
     now(),
     now(),
     '', '', '', ''
+  ),
+  -- グループ未所属の親ユーザー（/family で CreateGroupForm が表示されることを確認するためのテスト用）
+  (
+    '00000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'parent2@example.com',
+    crypt('Password123!', gen_salt('bf')),
+    now(),
+    '{"name": "お母さん", "role": "parent"}'::jsonb,
+    now(),
+    now(),
+    '', '', '', ''
   )
 ON CONFLICT (id) DO NOTHING;
 
 -- public.users（トリガーが走らない場合に備えて UPSERT）
 INSERT INTO public.users (id, email, name, role)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'parent@example.com', 'お父さん', 'parent'),
-  ('00000000-0000-0000-0000-000000000002', 'child@example.com',  '太郎',     'child')
+  ('00000000-0000-0000-0000-000000000001', 'parent@example.com',  'お父さん', 'parent'),
+  ('00000000-0000-0000-0000-000000000002', 'child@example.com',   '太郎',     'child'),
+  ('00000000-0000-0000-0000-000000000003', 'parent2@example.com', 'お母さん', 'parent')
 ON CONFLICT (id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------

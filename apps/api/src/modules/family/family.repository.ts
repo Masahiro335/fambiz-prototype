@@ -80,10 +80,18 @@ export class FamilyRepository {
    * @param userId - ユーザーID（オーナー）
    */
   async addGroupMember(groupId: string, userId: string): Promise<void> {
-    const { error } = await this.db.from('group_members').insert({
-      group_id: groupId,
-      user_id: userId,
-    });
+    // 一度脱退して再参加するケースに対応するため upsert を使用する。
+    // (group_id, user_id) の UNIQUE 制約があるため、ソフトデリート済みのレコードが残っていると
+    // INSERT が失敗するため、競合時は deleted_flag を false に戻して joined_at を更新する。
+    const { error } = await this.db.from('group_members').upsert(
+      {
+        group_id: groupId,
+        user_id: userId,
+        deleted_flag: false,
+        joined_at: new Date().toISOString(),
+      },
+      { onConflict: 'group_id,user_id' },
+    );
 
     if (error) {
       throw new InternalServerErrorException('グループメンバーの追加に失敗しました');
@@ -225,11 +233,30 @@ export class FamilyRepository {
    *    group_members から family_group_id を取得する設計となっている。
    *    このメソッドは将来の拡張用に残しておく。
    * @param _userId - 更新対象のユーザーID（現在は未使用）
-   * @param _familyGroupId - 紐付けるグループID（現在は未使用）
+   * @param _familyGroupId - 紐付けるグループID（null を含む・現在は未使用）
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async updateUserFamilyGroupId(_userId: string, _familyGroupId: string): Promise<void> {
-    // group_members テーブルへの INSERT で JWT カスタムクレームが更新されるため処理不要
+  async updateUserFamilyGroupId(_userId: string, _familyGroupId: string | null): Promise<void> {
+    // group_members テーブルへの INSERT/UPDATE で JWT カスタムクレームが更新されるため処理不要
     // （custom_access_token_hook が group_members から family_group_id を参照する）
+  }
+
+  /**
+   * グループメンバーをソフトデリートする（FUN-GROUP-006）。
+   * group_members テーブルの deleted_flag を true に更新して論理削除する。
+   * @param groupId - グループID
+   * @param userId - 脱退対象のユーザーID
+   */
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    const { error } = await this.db
+      .from('group_members')
+      .update({ deleted_flag: true, updated_at: new Date().toISOString() })
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('グループメンバーの削除に失敗しました');
+    }
   }
 }

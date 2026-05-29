@@ -113,8 +113,8 @@ export function ProfileForm() {
         return;
       }
 
-      // 招待URLがある場合はそこへ、通常登録はTOP（家族管理）画面へ
-      router.push(next && next.startsWith('/') ? next : '/family');
+      // 招待URLがある場合はそこへ、通常登録はメニュー画面へ
+      router.push(next && next.startsWith('/') ? next : '/');
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {

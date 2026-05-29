@@ -154,6 +154,53 @@ export class FamilyService {
   }
 
   /**
+   * 指定したメンバーを家族グループから脱退させる（FUN-GROUP-006）。
+   * 親のみ実行可能。
+   *
+   * 業務ルール:
+   * 1. リクエストユーザーの family_group_id と groupId が一致しない場合は ForbiddenException
+   * 2. 自分自身（currentUser.sub === userId）の脱退は BadRequestException
+   * 3. 対象メンバーがグループに存在しない場合は NotFoundException
+   * 4. group_members をソフトデリートして脱退を記録する
+   * 5. JWT カスタムクレームは group_members を参照するため、削除後に family_group_id が自動的に外れる
+   *
+   * @param groupId - 対象グループID
+   * @param userId - 脱退させるユーザーID
+   * @param currentUser - JWTペイロード（操作者）
+   * @returns 成功メッセージ
+   */
+  async leaveGroup(
+    groupId: string,
+    userId: string,
+    currentUser: JwtPayload,
+  ): Promise<{ message: string }> {
+    // 自分が所属するグループ以外への操作を禁止する
+    if (currentUser.family_group_id !== groupId) {
+      throw new ForbiddenException('他の家族グループのメンバーは操作できません');
+    }
+
+    // 親が自分自身を脱退させることは禁止する
+    if (currentUser.sub === userId) {
+      throw new BadRequestException('自分自身をグループから削除することはできません');
+    }
+
+    // 対象メンバーがグループに存在するか確認する
+    const member = await this.familyRepository.findGroupMemberById(groupId, userId);
+    if (!member) {
+      throw new NotFoundException('メンバーが見つかりません');
+    }
+
+    // group_members をソフトデリートして脱退を記録する
+    await this.familyRepository.removeGroupMember(groupId, userId);
+
+    // JWT カスタムクレームは group_members を参照するため family_group_id のリセットは不要だが、
+    // 将来の拡張に備えて updateUserFamilyGroupId を呼び出す（現在は no-op）
+    await this.familyRepository.updateUserFamilyGroupId(userId, null);
+
+    return { message: 'メンバーをグループから削除しました' };
+  }
+
+  /**
    * 家族グループの招待トークンを生成して保存する（FUN-GROUP-004）。
    * 親のみ実行可能。リクエストユーザーが対象グループに所属していない場合は ForbiddenException をスロー。
    *

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 
 // ランディングページ（Server Component）
-// ログイン済みユーザーはTOP（家族管理）画面へリダイレクトする
+// ログイン済みユーザーはメニュー画面へリダイレクトする
 export default async function HomePage() {
   const supabase = await createServerClient();
   const {

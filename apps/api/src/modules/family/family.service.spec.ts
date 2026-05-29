@@ -20,6 +20,7 @@ const mockFamilyRepository = {
   saveInviteCode: jest.fn(),
   findGroupByInviteCode: jest.fn(),
   findGroupMemberByUserId: jest.fn(),
+  removeGroupMember: jest.fn(),
 };
 
 // =========================================================================
@@ -413,6 +414,86 @@ describe('FamilyService', () => {
 
       // メンバー追加は呼ばれないこと
       expect(mockFamilyRepository.addGroupMember).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // leaveGroup
+  // =========================================================================
+
+  describe('leaveGroup', () => {
+    const groupId = 'group-id-001';
+    const targetUserId = 'user-id-child-001';
+
+    // 親ユーザー（操作者）
+    const parentUser: JwtPayload = {
+      sub: 'owner-user-id',
+      email: 'parent@example.com',
+      name: '山田太郎',
+      role: 'parent',
+      family_group_id: groupId,
+    };
+
+    // 脱退対象のメンバー（子ユーザー）
+    const targetMember: GroupMember = {
+      id: 'member-id-child-001',
+      group_id: groupId,
+      user_id: targetUserId,
+      joined_at: '2026-01-02T00:00:00Z',
+      user: {
+        id: targetUserId,
+        email: 'child@example.com',
+        name: '山田花子',
+        role: 'child',
+        avatar_url: null,
+        comment: null,
+        created_at: '2026-01-02T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+      },
+    };
+
+    it('正常系: 親が他メンバーの脱退に成功すること', async () => {
+      mockFamilyRepository.findGroupMemberById.mockResolvedValue(targetMember);
+      mockFamilyRepository.removeGroupMember.mockResolvedValue(undefined);
+      mockFamilyRepository.updateUserFamilyGroupId.mockResolvedValue(undefined);
+
+      const result = await service.leaveGroup(groupId, targetUserId, parentUser);
+
+      expect(result).toEqual({ message: 'メンバーをグループから削除しました' });
+      // メンバー存在確認が正しい引数で呼ばれること
+      expect(mockFamilyRepository.findGroupMemberById).toHaveBeenCalledWith(groupId, targetUserId);
+      // ソフトデリートが正しい引数で呼ばれること
+      expect(mockFamilyRepository.removeGroupMember).toHaveBeenCalledWith(groupId, targetUserId);
+      // family_group_id リセットが正しい引数で呼ばれること
+      expect(mockFamilyRepository.updateUserFamilyGroupId).toHaveBeenCalledWith(targetUserId, null);
+    });
+
+    it('異常系: 自分自身を脱退しようとした場合は BadRequestException をスロー', async () => {
+      // parentUser.sub と同じ userId を指定して自己削除を試みる
+      await expect(service.leaveGroup(groupId, parentUser.sub, parentUser)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      // リポジトリは呼ばれないこと
+      expect(mockFamilyRepository.findGroupMemberById).not.toHaveBeenCalled();
+      expect(mockFamilyRepository.removeGroupMember).not.toHaveBeenCalled();
+    });
+
+    it('異常系: 対象メンバーが存在しない場合は NotFoundException をスロー', async () => {
+      // リポジトリが null を返す（メンバーが存在しない）
+      mockFamilyRepository.findGroupMemberById.mockResolvedValue(null);
+
+      await expect(service.leaveGroup(groupId, 'non-existent-user-id', parentUser)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      // 存在確認は呼ばれること
+      expect(mockFamilyRepository.findGroupMemberById).toHaveBeenCalledWith(
+        groupId,
+        'non-existent-user-id',
+      );
+      // 削除は呼ばれないこと
+      expect(mockFamilyRepository.removeGroupMember).not.toHaveBeenCalled();
     });
   });
 
