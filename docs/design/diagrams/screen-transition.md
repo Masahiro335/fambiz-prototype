@@ -106,6 +106,7 @@ flowchart TD
     FL --> FW([家族グループ脱退\nSCR-GROUP-005])
 
     FD --> FL
+    FW -->|脱退完了| FL
 
     FI -->|QRコード共有| FJ([家族グループ参加\nSCR-GROUP-004])
     FJ -->|未ログイン| LG([ログイン画面\nSCR-AUTH-002])
@@ -199,6 +200,7 @@ flowchart TD
     G001 --> G002 & G003
     G002 --> G004
     GR001 --> GR002 & GR003 & GR005
+    GR005 --> GR001
     GR003 -.-> GR004
     S001 --> A004 & A003
 ```
