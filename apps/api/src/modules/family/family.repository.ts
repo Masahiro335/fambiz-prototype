@@ -225,11 +225,30 @@ export class FamilyRepository {
    *    group_members から family_group_id を取得する設計となっている。
    *    このメソッドは将来の拡張用に残しておく。
    * @param _userId - 更新対象のユーザーID（現在は未使用）
-   * @param _familyGroupId - 紐付けるグループID（現在は未使用）
+   * @param _familyGroupId - 紐付けるグループID（null を含む・現在は未使用）
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async updateUserFamilyGroupId(_userId: string, _familyGroupId: string): Promise<void> {
-    // group_members テーブルへの INSERT で JWT カスタムクレームが更新されるため処理不要
+  async updateUserFamilyGroupId(_userId: string, _familyGroupId: string | null): Promise<void> {
+    // group_members テーブルへの INSERT/UPDATE で JWT カスタムクレームが更新されるため処理不要
     // （custom_access_token_hook が group_members から family_group_id を参照する）
+  }
+
+  /**
+   * グループメンバーをソフトデリートする（FUN-GROUP-006）。
+   * group_members テーブルの deleted_flag を true に更新して論理削除する。
+   * @param groupId - グループID
+   * @param userId - 脱退対象のユーザーID
+   */
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    const { error } = await this.db
+      .from('group_members')
+      .update({ deleted_flag: true, updated_at: new Date().toISOString() })
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('グループメンバーの削除に失敗しました');
+    }
   }
 }

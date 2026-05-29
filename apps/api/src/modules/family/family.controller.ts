@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Query,
   Body,
   Param,
@@ -122,6 +123,27 @@ export class FamilyController {
     @CurrentUser() user: JwtPayload,
   ): Promise<GroupMemberResponseDto> {
     return this.familyService.findGroupMember(groupId, userId, user);
+  }
+
+  /**
+   * 指定したメンバーを家族グループから脱退させる（親のみ・FUN-GROUP-006）。
+   * 自分自身の削除は 400 エラーを返す。対象メンバーが存在しない場合は 404 エラーを返す。
+   */
+  @Delete(':groupId/members/:userId')
+  @Roles('parent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'メンバー脱退（FUN-GROUP-006・親のみ）' })
+  @ApiResponse({ status: 200, description: 'メンバー削除成功' })
+  @ApiResponse({ status: 400, description: '自分自身の削除は不可' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（子ユーザーまたは他グループへの操作）' })
+  @ApiResponse({ status: 404, description: 'メンバーが存在しない' })
+  async leaveGroup(
+    @Param('groupId') groupId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ message: string }> {
+    return this.familyService.leaveGroup(groupId, userId, user);
   }
 
   /**
