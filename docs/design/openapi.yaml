@@ -329,7 +329,11 @@ paths:
       - name: month
         in: query
         required: false
-        description: カレンダー表示用の対象月（YYYY-MM）。指定した月に期限・開始時間が含まれるタスクを返す（FUN-TASK-005）
+        description: |
+          カレンダー表示用の対象月（YYYY-MM）。以下いずれかを満たすタスクを返す（FUN-TASK-005）。
+          1. due_date が当月（JST）内
+          2. start_time が当月（JST）内
+          3. start_time が当月より前かつ end_time が当月以降（月をまたぐ複数日タスク）
         schema:
           type: string
           pattern: '^\d{4}-\d{2}$'

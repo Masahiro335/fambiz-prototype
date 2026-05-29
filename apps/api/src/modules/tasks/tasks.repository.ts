@@ -135,9 +135,16 @@ export class TasksRepository {
       const endUtc = fromZonedTime(new Date(year, mon, 1, 0, 0, 0), TZ);
       const startISO = startUtc.toISOString();
       const endISO = endUtc.toISOString();
-      // due_date または start_time が該当月（JST）に含まれるタスクをフィルタする
+      // 以下いずれかの条件を満たすタスクをフィルタする:
+      // 1. due_date が当月内
+      // 2. start_time が当月内（複数日タスク・単日タスク共通）
+      // 3. start_time が当月より前かつ end_time が当月以降（月をまたぐ複数日タスク）
       query = query.or(
-        `and(due_date.gte.${startISO},due_date.lt.${endISO}),and(start_time.gte.${startISO},start_time.lt.${endISO})`,
+        [
+          `and(due_date.gte.${startISO},due_date.lt.${endISO})`,
+          `and(start_time.gte.${startISO},start_time.lt.${endISO})`,
+          `and(start_time.lt.${startISO},end_time.gte.${startISO})`,
+        ].join(','),
       );
     }
 
