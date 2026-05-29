@@ -45,6 +45,7 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
 
   // UI状態
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // フォーム送信ハンドラ
@@ -125,6 +126,56 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  // タスク削除ハンドラ
+  async function handleDelete() {
+    // 削除前にユーザーへ確認を求める
+    if (!window.confirm('このタスクを削除しますか？')) return;
+
+    setIsDeleting(true);
+    setErrorMessage(null);
+
+    try {
+      // ブラウザ側でSupabaseセッションを取得しアクセストークンを付与する
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setErrorMessage('セッションが無効です。再ログインしてください。');
+        return;
+      }
+
+      // DELETE /v1/tasks/:id でタスクを削除する
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/tasks/${task.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errorBody = (await res.json()) as { message?: string | string[] };
+        const message: string =
+          typeof errorBody.message === 'string'
+            ? errorBody.message
+            : Array.isArray(errorBody.message)
+              ? errorBody.message.join(' ')
+              : 'タスクの削除に失敗しました。';
+        setErrorMessage(message);
+        return;
+      }
+
+      // 削除成功後はタスク一覧へ遷移する
+      router.push('/tasks');
+      router.refresh();
+    } catch {
+      setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -301,7 +352,7 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isDeleting}
             className="flex-1 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? '更新中...' : '更新する'}
@@ -309,10 +360,22 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
           <button
             type="button"
             onClick={() => router.push('/tasks')}
-            disabled={isLoading}
+            disabled={isLoading || isDeleting}
             className="flex-1 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             閉じる
+          </button>
+        </div>
+
+        {/* 削除ボタン（破壊的操作のため分離して配置） */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isLoading || isDeleting}
+            className="w-full py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDeleting ? '削除中...' : '削除する'}
           </button>
         </div>
       </form>

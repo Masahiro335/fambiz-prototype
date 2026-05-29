@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -70,6 +71,25 @@ export class TasksController {
     @CurrentUser() user: JwtPayload,
   ): Promise<TaskResponseDto> {
     return this.tasksService.updateTask(taskId, dto, user);
+  }
+
+  /**
+   * タスクをソフトデリートする（親のみ）。
+   * 他グループのタスクにアクセスしようとした場合は 404 エラーを返す。
+   */
+  @Delete(':taskId')
+  @HttpCode(HttpStatus.OK)
+  @Roles('parent')
+  @ApiOperation({ summary: 'タスク削除（FUN-TASK-003・親のみ）' })
+  @ApiResponse({ status: 200, description: 'タスク削除成功' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（子はアクセス不可）' })
+  @ApiResponse({ status: 404, description: 'タスクが存在しない' })
+  async deleteTask(
+    @Param('taskId') taskId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ message: string }> {
+    return this.tasksService.deleteTask(taskId, user);
   }
 
   /**

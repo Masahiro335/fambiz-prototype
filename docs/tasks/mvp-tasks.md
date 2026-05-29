@@ -94,7 +94,7 @@
 - [x] 🔴 `apps/api/src/modules/tasks/` モジュール作成
 - [x] 🔴 FUN-TASK-001: タスク登録API（API-TASK-001）— タイトル・説明・単価・期限・タイプ
 - [x] 🔴 FUN-TASK-002: タスク編集API
-- [ ] 🔴 FUN-TASK-003: タスク削除API（API-TASK-002）
+- [x] 🔴 FUN-TASK-003: タスク削除API（API-TASK-002）
 - [ ] 🔴 FUN-TASK-004: タスクステータス変更API（API-TASK-003）— 承認・差し戻し・取り下げ
 - [ ] 🔴 FUN-TASK-006: タスク一覧API（API-TASK-005）
 - [ ] 🟡 FUN-TASK-005: タスクカレンダーAPI（API-TASK-004）
