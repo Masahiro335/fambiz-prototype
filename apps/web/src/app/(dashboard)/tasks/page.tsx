@@ -115,7 +115,12 @@ export default async function TasksPage() {
         // タスクをカードリストで表示する
         <div className="space-y-3">
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              // 親ユーザーの場合のみ編集リンクを渡す
+              editHref={role === 'parent' ? `/tasks/${task.id}/edit` : undefined}
+            />
           ))}
         </div>
       )}

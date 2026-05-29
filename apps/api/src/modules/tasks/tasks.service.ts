@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import type { Task, TaskStatus, JwtPayload } from '@fambiz/types';
 import { TasksRepository } from './tasks.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 
 /**
  * タスク管理のビジネスロジックを担当するサービス。
@@ -68,6 +69,39 @@ export class TasksService {
     }
 
     return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword });
+  }
+
+  /**
+   * 既存タスクを更新する（FUN-TASK-002）。
+   *
+   * セキュリティチェック:
+   * - リポジトリ側で group_id フィルタを適用するため、他グループへの更新は不可
+   * - 更新結果が null の場合は対象タスクが存在しないとして NotFoundException をスロー
+   *
+   * @param taskId - 更新対象のタスクID
+   * @param dto - タスク更新リクエスト DTO（全フィールドオプション）
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns 更新されたタスクオブジェクト
+   * @throws NotFoundException タスクが存在しない、または他グループのタスクにアクセスした場合
+   */
+  async updateTask(taskId: string, dto: UpdateTaskDto, user: JwtPayload): Promise<Task> {
+    // DTOのキャメルケースをDBのスネークケースに変換して渡す
+    const updated = await this.tasksRepository.updateTask(taskId, user.family_group_id, {
+      assignee_id: dto.assigneeId,
+      task_name: dto.taskName,
+      category: dto.category,
+      reward_amount: dto.rewardAmount,
+      start_time: dto.startTime,
+      end_time: dto.endTime,
+      due_date: dto.dueDate,
+      memo: dto.memo,
+    });
+
+    if (!updated) {
+      throw new NotFoundException('タスクが見つかりません');
+    }
+
+    return updated;
   }
 
   /**

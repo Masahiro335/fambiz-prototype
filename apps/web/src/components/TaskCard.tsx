@@ -1,9 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import type { Task, TaskStatus } from '@fambiz/types';
 
 interface TaskCardProps {
   task: Task;
+  /** 親ユーザーの場合に渡す編集ページへのリンクURL */
+  editHref?: string;
 }
 
 // ステータスのラベルとカラークラスを定義する
@@ -39,7 +42,7 @@ const categoryConfig: Record<string, { className: string }> = {
 };
 
 // タスクカードコンポーネント（一覧表示用）
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, editHref }: TaskCardProps) {
   const status = statusConfig[task.status] ?? { label: task.status, className: 'bg-gray-100 text-gray-600' };
   const categoryStyle = task.category ? (categoryConfig[task.category] ?? { className: 'bg-green-100 text-green-700' }) : null;
 
@@ -69,10 +72,22 @@ export function TaskCard({ task }: TaskCardProps) {
         )}
       </div>
 
-      {/* ステータスバッジ */}
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${status.className}`}>
-        {status.label}
-      </span>
+      <div className="flex flex-col items-end gap-2 shrink-0">
+        {/* ステータスバッジ */}
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${status.className}`}>
+          {status.label}
+        </span>
+
+        {/* 親ユーザーのみ編集リンクを表示する */}
+        {editHref && (
+          <Link
+            href={editHref}
+            className="text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+          >
+            編集
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
