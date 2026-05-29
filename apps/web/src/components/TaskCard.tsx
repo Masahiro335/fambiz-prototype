@@ -49,9 +49,14 @@ export function TaskCard({ task, editHref }: TaskCardProps) {
   return (
     <div className="bg-white rounded-xl shadow-sm border p-4 flex items-start justify-between gap-4 hover:shadow-md transition-shadow">
       <div className="flex-1 min-w-0">
-        {/* タスク名と分類バッジ */}
+        {/* タスク名と分類バッジ（タスク名はタスク詳細ページへのリンク） */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <h3 className="text-base font-semibold text-gray-800 truncate">{task.task_name}</h3>
+          <Link
+            href={`/tasks/${task.id}`}
+            className="text-base font-semibold text-gray-800 hover:text-blue-600 hover:underline truncate transition-colors"
+          >
+            {task.task_name}
+          </Link>
           {task.category && categoryStyle && (
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryStyle.className}`}>
               {task.category}

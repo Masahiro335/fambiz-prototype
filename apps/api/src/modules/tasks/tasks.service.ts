@@ -1,8 +1,14 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import type { Task, TaskStatus, JwtPayload } from '@fambiz/types';
 import { TasksRepository } from './tasks.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 
 /**
  * タスク管理のビジネスロジックを担当するサービス。
@@ -124,6 +130,100 @@ export class TasksService {
     }
 
     return { message: 'タスクを削除しました' };
+  }
+
+  /**
+   * タスクのステータスを変更する（FUN-TASK-004）。
+   *
+   * ステータス遷移ルール:
+   * - pending → reported   : 子（child）のみ可（実行報告）
+   * - reported → completed : 親（parent）のみ可（承認）
+   * - reported → pending   : 親（parent）のみ可（差し戻し）
+   * - pending → cancelled  : 子（child）のみ可（取り下げ）
+   * - reported → cancelled : 子（child）のみ可（取り下げ）
+   * - completed / expired / cancelled からの遷移: 不可
+   *
+   * セキュリティチェック:
+   * - リポジトリ側で group_id フィルタを適用するため、他グループへの操作は不可
+   * - ステータス遷移のロール違反は ForbiddenException をスロー
+   * - 不正遷移は BadRequestException をスロー
+   *
+   * @param taskId - 更新対象のタスクID
+   * @param dto - ステータス変更リクエスト DTO
+   * @param user - JWTペイロード（認証済みユーザー情報）
+   * @returns 更新されたタスクオブジェクト
+   * @throws NotFoundException タスクが存在しない、または他グループのタスクにアクセスした場合
+   * @throws ForbiddenException ロールに許可されていない遷移を試みた場合
+   * @throws BadRequestException 不正なステータス遷移の場合
+   */
+  async updateTaskStatus(
+    taskId: string,
+    dto: UpdateTaskStatusDto,
+    user: JwtPayload,
+  ): Promise<Task> {
+    // 現在のタスクを取得してステータスを確認する（group_id フィルタで他グループ分離も兼ねる）
+    const currentTask = await this.tasksRepository.findById(taskId, user.family_group_id);
+
+    if (!currentTask) {
+      throw new NotFoundException('タスクが見つかりません');
+    }
+
+    const from = currentTask.status;
+    const to = dto.status;
+    const role = user.role;
+
+    // 終端ステータスからの遷移は全ロールに対して不可
+    if (from === 'completed' || from === 'expired' || from === 'cancelled') {
+      throw new BadRequestException(
+        `ステータス "${from}" のタスクは変更できません`,
+      );
+    }
+
+    // ステータス遷移のロール・組み合わせを検証する
+    if (from === 'pending' && to === 'reported') {
+      // 実行報告: 子のみ可
+      if (role !== 'child') {
+        throw new ForbiddenException('実行報告は子のみ行えます');
+      }
+    } else if (from === 'reported' && to === 'completed') {
+      // 承認: 親のみ可
+      if (role !== 'parent') {
+        throw new ForbiddenException('承認は親のみ行えます');
+      }
+    } else if (from === 'reported' && to === 'pending') {
+      // 差し戻し: 親のみ可
+      if (role !== 'parent') {
+        throw new ForbiddenException('差し戻しは親のみ行えます');
+      }
+    } else if (from === 'pending' && to === 'cancelled') {
+      // 取り下げ（pending）: 子のみ可
+      if (role !== 'child') {
+        throw new ForbiddenException('取り下げは子のみ行えます');
+      }
+    } else if (from === 'reported' && to === 'cancelled') {
+      // 取り下げ（reported）: 子のみ可
+      if (role !== 'child') {
+        throw new ForbiddenException('取り下げは子のみ行えます');
+      }
+    } else {
+      // 上記以外の遷移はすべて不正
+      throw new BadRequestException(
+        `"${from}" から "${to}" へのステータス変更はできません`,
+      );
+    }
+
+    // バリデーション通過後にステータスを更新する
+    const updated = await this.tasksRepository.updateTaskStatus(
+      taskId,
+      user.family_group_id,
+      to,
+    );
+
+    if (!updated) {
+      throw new NotFoundException('タスクが見つかりません');
+    }
+
+    return updated;
   }
 
   /**

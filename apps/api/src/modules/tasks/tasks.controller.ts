@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -15,6 +16,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -90,6 +92,26 @@ export class TasksController {
     @CurrentUser() user: JwtPayload,
   ): Promise<{ message: string }> {
     return this.tasksService.deleteTask(taskId, user);
+  }
+
+  /**
+   * タスクのステータスを変更する（FUN-TASK-004）。
+   * 親・子どちらもアクセスできるが、遷移内容によってサービス層でロール制御を行う。
+   */
+  @Patch(':taskId/status')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'タスクステータス変更（FUN-TASK-004）' })
+  @ApiResponse({ status: 200, description: 'ステータス変更成功', type: TaskResponseDto })
+  @ApiResponse({ status: 400, description: 'ステータス遷移が不正' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: 'ロール違反' })
+  @ApiResponse({ status: 404, description: 'タスクが存在しない' })
+  async updateTaskStatus(
+    @Param('taskId') taskId: string,
+    @Body() dto: UpdateTaskStatusDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<TaskResponseDto> {
+    return this.tasksService.updateTaskStatus(taskId, dto, user);
   }
 
   /**

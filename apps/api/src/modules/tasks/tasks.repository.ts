@@ -206,6 +206,38 @@ export class TasksRepository {
   }
 
   /**
+   * タスクのステータスを更新する（FUN-TASK-004）。
+   * group_id と deleted_flag フィルタで家族グループのデータ分離を保証する。
+   * @param taskId - 更新対象のタスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @param status - 変更後のステータス
+   * @returns 更新されたタスクオブジェクト、対象が存在しない場合は null
+   */
+  async updateTaskStatus(
+    taskId: string,
+    groupId: string,
+    status: TaskStatus,
+  ): Promise<Task | null> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .update({ status })
+      // 家族グループ分離: 自グループのタスクのみ更新する
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクステータスの更新に失敗しました');
+    }
+
+    return data ?? null;
+  }
+
+  /**
    * タスクIDで特定のタスクを1件取得する。
    * group_id フィルタで家族グループのデータ分離を保証する。
    * @param taskId - タスクID
