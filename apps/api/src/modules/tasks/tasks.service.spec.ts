@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { TasksRepository } from './tasks.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import type { Task, JwtPayload } from '@fambiz/types';
 
 // =========================================================================
@@ -16,6 +17,7 @@ const mockTasksRepository = {
   findById: jest.fn(),
   updateTask: jest.fn(),
   deleteTask: jest.fn(),
+  updateTaskStatus: jest.fn(),
 };
 
 // =========================================================================
@@ -309,6 +311,133 @@ describe('TasksService', () => {
         'non-existent-task-id',
         parentUser.family_group_id,
       );
+    });
+  });
+
+  // =========================================================================
+  // updateTaskStatus
+  // =========================================================================
+
+  describe('updateTaskStatus', () => {
+    const taskId = 'task-id-001';
+
+    // pending 状態のタスク（デフォルト）
+    const pendingTask: Task = { ...mockTask, status: 'pending' };
+    // reported 状態のタスク
+    const reportedTask: Task = { ...mockTask, status: 'reported' };
+    // completed 状態のタスク
+    const completedTask: Task = { ...mockTask, status: 'completed' };
+
+    it('pending → reported を child が実行できること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'reported' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...pendingTask, status: 'reported' });
+
+      const result = await service.updateTaskStatus(taskId, dto, childUser);
+
+      expect(result.status).toBe('reported');
+      expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
+        taskId,
+        childUser.family_group_id,
+        'reported',
+      );
+    });
+
+    it('reported → completed を parent が承認できること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'completed' });
+
+      const result = await service.updateTaskStatus(taskId, dto, parentUser);
+
+      expect(result.status).toBe('completed');
+      expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
+        taskId,
+        parentUser.family_group_id,
+        'completed',
+      );
+    });
+
+    it('reported → pending を parent が差し戻しできること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'pending', comment: '作業が不完全です' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'pending' });
+
+      const result = await service.updateTaskStatus(taskId, dto, parentUser);
+
+      expect(result.status).toBe('pending');
+      expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
+        taskId,
+        parentUser.family_group_id,
+        'pending',
+      );
+    });
+
+    it('pending → cancelled を child が取り下げできること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'cancelled' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...pendingTask, status: 'cancelled' });
+
+      const result = await service.updateTaskStatus(taskId, dto, childUser);
+
+      expect(result.status).toBe('cancelled');
+    });
+
+    it('reported → cancelled を child が取り下げできること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'cancelled' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'cancelled' });
+
+      const result = await service.updateTaskStatus(taskId, dto, childUser);
+
+      expect(result.status).toBe('cancelled');
+    });
+
+    it('completed からの遷移が BadRequestException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'pending' };
+      mockTasksRepository.findById.mockResolvedValue(completedTask);
+
+      await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      // ステータス更新リポジトリは呼ばれないこと
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
+    it('child が reported → completed を試みると ForbiddenException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTask);
+
+      await expect(service.updateTaskStatus(taskId, dto, childUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
+    it('parent が pending → reported を試みると ForbiddenException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'reported' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+
+      await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
+    it('タスクが存在しない場合は NotFoundException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'reported' };
+      // findById が null を返す（タスクが存在しないまたは他グループのタスク）
+      mockTasksRepository.findById.mockResolvedValue(null);
+
+      await expect(service.updateTaskStatus('non-existent-task-id', dto, childUser)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      // 存在確認でエラーになるためステータス更新リポジトリは呼ばれないこと
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
     });
   });
 
