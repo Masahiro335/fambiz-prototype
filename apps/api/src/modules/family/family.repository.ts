@@ -139,6 +139,68 @@ export class FamilyRepository {
   }
 
   /**
+   * 招待コードでグループを検索する（FUN-GROUP-005）。
+   * @param inviteCode - 招待トークン文字列
+   * @returns グループが存在する場合は Group オブジェクト、存在しない場合は null
+   */
+  async findGroupByInviteCode(inviteCode: string): Promise<Group | null> {
+    const { data, error } = await this.db
+      .from('groups')
+      .select('id, group_name, invite_code, owner_id, created_at, updated_at')
+      .eq('invite_code', inviteCode)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('グループの検索に失敗しました');
+    }
+
+    return data ?? null;
+  }
+
+  /**
+   * 指定した user_id のグループメンバー情報を取得する（FUN-GROUP-005）。
+   * users テーブルを JOIN してユーザー情報も含めて返す。
+   * @param userId - ユーザーID
+   * @returns グループメンバーが存在する場合は GroupMember オブジェクト、存在しない場合は null
+   */
+  async findGroupMemberByUserId(userId: string): Promise<GroupMember | null> {
+    const { data, error } = await this.db
+      .from('group_members')
+      .select(
+        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+      )
+      .eq('user_id', userId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('グループメンバーの取得に失敗しました');
+    }
+
+    return (data ?? null) as unknown as GroupMember | null;
+  }
+
+  /**
+   * 指定したグループのアクティブなメンバー数を取得する（プレビュー用）。
+   * @param groupId - グループID
+   * @returns メンバー数
+   */
+  async countGroupMembers(groupId: string): Promise<number> {
+    const { count, error } = await this.db
+      .from('group_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('メンバー数の取得に失敗しました');
+    }
+
+    return count ?? 0;
+  }
+
+  /**
    * グループの招待コードを更新する（FUN-GROUP-004）。
    * groups テーブルの invite_code カラムを指定した inviteCode で UPDATE する。
    * @param groupId - 更新対象のグループID

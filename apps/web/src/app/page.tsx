@@ -1,6 +1,19 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { createServerClient } from '@/lib/supabase/server';
 
-export default function HomePage() {
+// ランディングページ（Server Component）
+// ログイン済みユーザーはTOP（家族管理）画面へリダイレクトする
+export default async function HomePage() {
+  const supabase = await createServerClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session) {
+    redirect('/family');
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="text-center">

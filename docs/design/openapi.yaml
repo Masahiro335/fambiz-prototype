@@ -167,7 +167,35 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
-  # /groups/join は静的パスのため /groups/{groupId} より先に定義する（NestJS ルーティング優先順）
+  # /groups/join/preview・/groups/join は静的パスのため /groups/{groupId} より先に定義する（NestJS ルーティング優先順）
+  /groups/join/preview:
+    get:
+      summary: 招待コードによるグループ情報プレビュー取得
+      description: |
+        招待URLからアクセスした未参加ユーザーが参加前にグループ情報を確認するためのエンドポイント。
+        groups テーブルの RLS は所属グループのみ参照可能に制限されているため、
+        service_role キー（RLS バイパス）を使用する NestJS 経由でのみ取得できる。
+        認証必須・ロール制限なし。
+      tags: [GROUP]
+      parameters:
+        - name: inviteCode
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 招待トークン文字列
+      responses:
+        '200':
+          description: グループ情報取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupPreviewResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /groups/join:
     post:
       summary: 家族グループ参加・招待トークン使用（FUN-GROUP-005）
@@ -967,6 +995,20 @@ components:
         expiresAt:
           type: string
           format: date-time
+
+    GroupPreviewResponse:
+      type: object
+      required: [groupName, memberCount]
+      description: |
+        招待コードから取得するグループ参加前プレビュー情報。
+        RLS バイパスのため NestJS（service_role）経由で返却される。
+      properties:
+        groupName:
+          type: string
+          description: グループ名
+        memberCount:
+          type: integer
+          description: 現在のメンバー数
 
     GroupJoinRequest:
       type: object
