@@ -80,10 +80,18 @@ export class FamilyRepository {
    * @param userId - ユーザーID（オーナー）
    */
   async addGroupMember(groupId: string, userId: string): Promise<void> {
-    const { error } = await this.db.from('group_members').insert({
-      group_id: groupId,
-      user_id: userId,
-    });
+    // 一度脱退して再参加するケースに対応するため upsert を使用する。
+    // (group_id, user_id) の UNIQUE 制約があるため、ソフトデリート済みのレコードが残っていると
+    // INSERT が失敗するため、競合時は deleted_flag を false に戻して joined_at を更新する。
+    const { error } = await this.db.from('group_members').upsert(
+      {
+        group_id: groupId,
+        user_id: userId,
+        deleted_flag: false,
+        joined_at: new Date().toISOString(),
+      },
+      { onConflict: 'group_id,user_id' },
+    );
 
     if (error) {
       throw new InternalServerErrorException('グループメンバーの追加に失敗しました');
