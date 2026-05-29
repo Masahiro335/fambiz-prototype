@@ -3,6 +3,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { TasksRepository } from './tasks.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import type { Task, JwtPayload } from '@fambiz/types';
 
 // =========================================================================
@@ -13,6 +14,7 @@ const mockTasksRepository = {
   createTask: jest.fn(),
   findAll: jest.fn(),
   findById: jest.fn(),
+  updateTask: jest.fn(),
 };
 
 // =========================================================================
@@ -208,6 +210,67 @@ describe('TasksService', () => {
 
       // リポジトリは呼ばれないこと（セキュリティチェックで弾かれる）
       expect(mockTasksRepository.findAll).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // updateTask
+  // =========================================================================
+
+  describe('updateTask', () => {
+    const taskId = 'task-id-001';
+
+    // タスク更新リクエスト DTO（一部フィールドのみ更新）
+    const updateTaskDto: UpdateTaskDto = {
+      taskName: '皿洗い',
+      rewardAmount: 150,
+    };
+
+    // 更新後のタスクデータ
+    const updatedMockTask: Task = {
+      ...mockTask,
+      task_name: '皿洗い',
+      reward_amount: 150,
+    };
+
+    it('正常にタスクを更新できること', async () => {
+      // リポジトリが更新後のタスクを返すよう設定
+      mockTasksRepository.updateTask.mockResolvedValue(updatedMockTask);
+
+      const result = await service.updateTask(taskId, updateTaskDto, parentUser);
+
+      expect(result).toEqual(updatedMockTask);
+      // 正しい引数でリポジトリが呼ばれること
+      expect(mockTasksRepository.updateTask).toHaveBeenCalledWith(
+        taskId,
+        parentUser.family_group_id,
+        {
+          assignee_id: undefined,
+          task_name: '皿洗い',
+          category: undefined,
+          reward_amount: 150,
+          start_time: undefined,
+          end_time: undefined,
+          due_date: undefined,
+          memo: undefined,
+        },
+      );
+    });
+
+    it('タスクが存在しない場合は NotFoundException をスロー', async () => {
+      // リポジトリが null を返す（タスクが存在しないまたは他グループのタスク）
+      mockTasksRepository.updateTask.mockResolvedValue(null);
+
+      await expect(
+        service.updateTask('non-existent-task-id', updateTaskDto, parentUser),
+      ).rejects.toThrow(NotFoundException);
+
+      // リポジトリは呼ばれること
+      expect(mockTasksRepository.updateTask).toHaveBeenCalledWith(
+        'non-existent-task-id',
+        parentUser.family_group_id,
+        expect.any(Object),
+      );
     });
   });
 

@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Body,
   Param,
   Query,
@@ -12,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -48,6 +50,26 @@ export class TasksController {
     @CurrentUser() user: JwtPayload,
   ): Promise<TaskResponseDto> {
     return this.tasksService.createTask(dto, user);
+  }
+
+  /**
+   * タスクを更新する（親のみ）。
+   * 他グループのタスクにアクセスしようとした場合は 404 エラーを返す。
+   */
+  @Put(':taskId')
+  @Roles('parent')
+  @ApiOperation({ summary: 'タスク更新（FUN-TASK-002・親のみ）' })
+  @ApiResponse({ status: 200, description: 'タスク更新成功', type: TaskResponseDto })
+  @ApiResponse({ status: 400, description: 'バリデーションエラー' })
+  @ApiResponse({ status: 401, description: '未認証' })
+  @ApiResponse({ status: 403, description: '権限なし（子はアクセス不可）' })
+  @ApiResponse({ status: 404, description: 'タスクが存在しない' })
+  async updateTask(
+    @Param('taskId') taskId: string,
+    @Body() dto: UpdateTaskDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<TaskResponseDto> {
+    return this.tasksService.updateTask(taskId, dto, user);
   }
 
   /**
