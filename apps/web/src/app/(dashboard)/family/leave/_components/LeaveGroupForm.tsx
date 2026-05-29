@@ -63,8 +63,8 @@ export function LeaveGroupForm({ members, groupId }: LeaveGroupFormProps) {
         return;
       }
 
-      // 成功後はメンバー一覧へリダイレクトしてページを更新する
-      router.push('/family');
+      // 成功後はメニュー画面へリダイレクトする
+      router.push('/');
       router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');

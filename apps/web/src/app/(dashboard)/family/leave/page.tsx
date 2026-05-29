@@ -38,14 +38,14 @@ export default async function LeavePage() {
     familyGroupId = metadata.family_group_id ?? null;
   }
 
-  // 親ロール以外はメンバー一覧へリダイレクトする
+  // 親ロール以外はメニュー画面へリダイレクトする
   if (role !== 'parent') {
-    redirect('/family');
+    redirect('/');
   }
 
-  // グループ未参加の場合はメンバー一覧へリダイレクトする
+  // グループ未参加の場合はメニュー画面へリダイレクトする
   if (!familyGroupId) {
-    redirect('/family');
+    redirect('/');
   }
 
   // メンバー一覧をAPIから取得する

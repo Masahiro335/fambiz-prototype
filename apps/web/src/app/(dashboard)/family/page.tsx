@@ -36,22 +36,32 @@ export default async function FamilyPage() {
     familyGroupId = metadata.family_group_id ?? null;
   }
 
+  // グループ未所属の子ユーザーはメニュー画面へリダイレクトする
+  if (!familyGroupId && role !== 'parent') {
+    redirect('/');
+  }
+
   // グループ参加済みの場合はメンバー一覧とグループ名を並列取得する
   let members: GroupMember[] = [];
   let groupName = '家族グループ';
 
   if (familyGroupId) {
-    // メンバー一覧APIとSupabaseのグループ名クエリを並列で実行する
-    const [fetchedMembers, groupResult] = await Promise.all([
-      apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`),
-      supabase.from('groups').select('group_name').eq('id', familyGroupId).single(),
-    ]);
+    try {
+      // メンバー一覧APIとSupabaseのグループ名クエリを並列で実行する
+      const [fetchedMembers, groupResult] = await Promise.all([
+        apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`),
+        supabase.from('groups').select('group_name').eq('id', familyGroupId).single(),
+      ]);
 
-    members = fetchedMembers;
+      members = fetchedMembers;
 
-    // グループ名が取得できた場合は上書き、失敗時はフォールバック値を維持する
-    if (groupResult.data?.group_name) {
-      groupName = groupResult.data.group_name;
+      // グループ名が取得できた場合は上書き、失敗時はフォールバック値を維持する
+      if (groupResult.data?.group_name) {
+        groupName = groupResult.data.group_name;
+      }
+    } catch {
+      // 脱退済みなどでAPIが403を返した場合はメニュー画面へリダイレクトする
+      redirect('/');
     }
   }
 
@@ -66,17 +76,9 @@ export default async function FamilyPage() {
           groupName={groupName}
           currentUserRole={role ?? 'child'}
         />
-      ) : role === 'parent' ? (
+      ) : (
         // グループ未所属の親ユーザーにグループ作成フォームを表示する
         <CreateGroupForm />
-      ) : (
-        // グループ未所属の子ユーザーへのメッセージ
-        <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
-          <p className="text-gray-700 font-medium">まだグループに参加していません。</p>
-          <p className="text-sm text-gray-500 mt-1">
-            親に招待してもらいましょう。
-          </p>
-        </div>
       )}
     </div>
   );
