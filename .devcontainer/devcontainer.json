@@ -2,6 +2,16 @@
   "name": "FamBiz Dev Container",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
 
+  "initializeCommand": "caffeinate -i &",
+  "shutdownAction": "none",
+  "updateRemoteUserUID": false,
+
+  // 認証情報の永続化（コンテナ再作成後も認証済み状態を維持）
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.config/gh,target=/home/node/.config/gh,type=bind,consistency=cached"
+  ],
+
   // 開発ツール
   "features": {
     // GitHub CLI（PR作成・Issue管理）
