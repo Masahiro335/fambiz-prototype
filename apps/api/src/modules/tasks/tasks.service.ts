@@ -176,9 +176,7 @@ export class TasksService {
 
     // 終端ステータスからの遷移は全ロールに対して不可
     if (from === 'completed' || from === 'expired' || from === 'cancelled') {
-      throw new BadRequestException(
-        `ステータス "${from}" のタスクは変更できません`,
-      );
+      throw new BadRequestException(`ステータス "${from}" のタスクは変更できません`);
     }
 
     // ステータス遷移のロール・組み合わせを検証する
@@ -197,6 +195,11 @@ export class TasksService {
       if (role !== 'parent') {
         throw new ForbiddenException('差し戻しは親のみ行えます');
       }
+    } else if (from === 'pending' && to === 'completed') {
+      // 即時完了（編集画面からの直接承認）: 親のみ可
+      if (role !== 'parent') {
+        throw new ForbiddenException('即時完了は親のみ行えます');
+      }
     } else if (from === 'pending' && to === 'cancelled') {
       // 取り下げ（pending）: 子のみ可
       if (role !== 'child') {
@@ -209,17 +212,11 @@ export class TasksService {
       }
     } else {
       // 上記以外の遷移はすべて不正
-      throw new BadRequestException(
-        `"${from}" から "${to}" へのステータス変更はできません`,
-      );
+      throw new BadRequestException(`"${from}" から "${to}" へのステータス変更はできません`);
     }
 
     // バリデーション通過後にステータスを更新する
-    const updated = await this.tasksRepository.updateTaskStatus(
-      taskId,
-      user.family_group_id,
-      to,
-    );
+    const updated = await this.tasksRepository.updateTaskStatus(taskId, user.family_group_id, to);
 
     if (!updated) {
       throw new NotFoundException('タスクが見つかりません');
