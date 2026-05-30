@@ -214,6 +214,28 @@ describe('TasksService', () => {
       // リポジトリは呼ばれないこと（セキュリティチェックで弾かれる）
       expect(mockTasksRepository.findAll).not.toHaveBeenCalled();
     });
+
+    it('month フィルタを指定してタスク一覧を取得できること（FUN-TASK-005）', async () => {
+      mockTasksRepository.findAll.mockResolvedValue(mockTasks);
+
+      const result = await service.findAll(
+        groupId,
+        parentUser,
+        undefined,
+        undefined,
+        undefined,
+        '2026-05',
+      );
+
+      expect(result).toEqual(mockTasks);
+      expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
+        groupId,
+        status: undefined,
+        assigneeId: undefined,
+        keyword: undefined,
+        month: '2026-05',
+      });
+    });
   });
 
   // =========================================================================
@@ -331,7 +353,10 @@ describe('TasksService', () => {
     it('pending → reported を child が実行できること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'reported' };
       mockTasksRepository.findById.mockResolvedValue(pendingTask);
-      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...pendingTask, status: 'reported' });
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...pendingTask,
+        status: 'reported',
+      });
 
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
@@ -346,7 +371,10 @@ describe('TasksService', () => {
     it('reported → completed を parent が承認できること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
       mockTasksRepository.findById.mockResolvedValue(reportedTask);
-      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'completed' });
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...reportedTask,
+        status: 'completed',
+      });
 
       const result = await service.updateTaskStatus(taskId, dto, parentUser);
 
@@ -361,7 +389,10 @@ describe('TasksService', () => {
     it('reported → pending を parent が差し戻しできること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'pending', comment: '作業が不完全です' };
       mockTasksRepository.findById.mockResolvedValue(reportedTask);
-      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'pending' });
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...reportedTask,
+        status: 'pending',
+      });
 
       const result = await service.updateTaskStatus(taskId, dto, parentUser);
 
@@ -373,10 +404,42 @@ describe('TasksService', () => {
       );
     });
 
+    it('pending → completed を parent が即時完了できること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...pendingTask,
+        status: 'completed',
+      });
+
+      const result = await service.updateTaskStatus(taskId, dto, parentUser);
+
+      expect(result.status).toBe('completed');
+      expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
+        taskId,
+        parentUser.family_group_id,
+        'completed',
+      );
+    });
+
+    it('child が pending → completed を試みると ForbiddenException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+
+      await expect(service.updateTaskStatus(taskId, dto, childUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
     it('pending → cancelled を child が取り下げできること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'cancelled' };
       mockTasksRepository.findById.mockResolvedValue(pendingTask);
-      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...pendingTask, status: 'cancelled' });
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...pendingTask,
+        status: 'cancelled',
+      });
 
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
@@ -386,7 +449,10 @@ describe('TasksService', () => {
     it('reported → cancelled を child が取り下げできること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'cancelled' };
       mockTasksRepository.findById.mockResolvedValue(reportedTask);
-      mockTasksRepository.updateTaskStatus.mockResolvedValue({ ...reportedTask, status: 'cancelled' });
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...reportedTask,
+        status: 'cancelled',
+      });
 
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
@@ -432,9 +498,9 @@ describe('TasksService', () => {
       // findById が null を返す（タスクが存在しないまたは他グループのタスク）
       mockTasksRepository.findById.mockResolvedValue(null);
 
-      await expect(service.updateTaskStatus('non-existent-task-id', dto, childUser)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateTaskStatus('non-existent-task-id', dto, childUser),
+      ).rejects.toThrow(NotFoundException);
 
       // 存在確認でエラーになるためステータス更新リポジトリは呼ばれないこと
       expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();

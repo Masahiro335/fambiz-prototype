@@ -7,6 +7,7 @@ import {
   type WebSocketLikeConstructor,
 } from '@supabase/supabase-js';
 import WebSocket from 'ws';
+import { fromZonedTime } from 'date-fns-tz';
 import type { Task, TaskStatus } from '@fambiz/types';
 
 /**
@@ -17,6 +18,7 @@ export interface FindTasksFilter {
   status?: TaskStatus;
   assigneeId?: string;
   keyword?: string;
+  month?: string; // YYYY-MM形式（FUN-TASK-005）
 }
 
 /**
@@ -122,6 +124,28 @@ export class TasksRepository {
     // キーワード検索（task_name に対して部分一致）
     if (filter.keyword) {
       query = query.ilike('task_name', `%${filter.keyword}%`);
+    }
+
+    // 月フィルタ: JST月初・翌月初をUTCに変換して due_date または start_time が含まれるタスクをフィルタする（FUN-TASK-005）
+    if (filter.month) {
+      const [year, mon] = filter.month.split('-').map(Number);
+      const TZ = 'Asia/Tokyo';
+      // JSTの月初・翌月初をUTCに変換する
+      const startUtc = fromZonedTime(new Date(year, mon - 1, 1, 0, 0, 0), TZ);
+      const endUtc = fromZonedTime(new Date(year, mon, 1, 0, 0, 0), TZ);
+      const startISO = startUtc.toISOString();
+      const endISO = endUtc.toISOString();
+      // 以下いずれかの条件を満たすタスクをフィルタする:
+      // 1. due_date が当月内
+      // 2. start_time が当月内（複数日タスク・単日タスク共通）
+      // 3. start_time が当月より前かつ end_time が当月以降（月をまたぐ複数日タスク）
+      query = query.or(
+        [
+          `and(due_date.gte.${startISO},due_date.lt.${endISO})`,
+          `and(start_time.gte.${startISO},start_time.lt.${endISO})`,
+          `and(start_time.lt.${startISO},end_time.gte.${startISO})`,
+        ].join(','),
+      );
     }
 
     // 作成日時の降順で返す

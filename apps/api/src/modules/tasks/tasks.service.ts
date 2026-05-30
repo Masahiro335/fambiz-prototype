@@ -60,6 +60,7 @@ export class TasksService {
    * @param status - タスクステータスフィルタ（任意）
    * @param assigneeId - 担当者フィルタ（任意）
    * @param keyword - キーワード検索（任意）
+   * @param month - カレンダー表示用の対象月（YYYY-MM形式・任意、FUN-TASK-005）
    * @returns タスクの配列
    */
   async findAll(
@@ -68,13 +69,14 @@ export class TasksService {
     status?: TaskStatus,
     assigneeId?: string,
     keyword?: string,
+    month?: string,
   ): Promise<Task[]> {
     // 自分が所属するグループ以外のタスク参照を禁止する
     if (groupId !== user.family_group_id) {
       throw new ForbiddenException('他の家族グループのタスクは参照できません');
     }
 
-    return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword });
+    return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword, month });
   }
 
   /**
@@ -174,9 +176,7 @@ export class TasksService {
 
     // 終端ステータスからの遷移は全ロールに対して不可
     if (from === 'completed' || from === 'expired' || from === 'cancelled') {
-      throw new BadRequestException(
-        `ステータス "${from}" のタスクは変更できません`,
-      );
+      throw new BadRequestException(`ステータス "${from}" のタスクは変更できません`);
     }
 
     // ステータス遷移のロール・組み合わせを検証する
@@ -195,6 +195,11 @@ export class TasksService {
       if (role !== 'parent') {
         throw new ForbiddenException('差し戻しは親のみ行えます');
       }
+    } else if (from === 'pending' && to === 'completed') {
+      // 即時完了（編集画面からの直接承認）: 親のみ可
+      if (role !== 'parent') {
+        throw new ForbiddenException('即時完了は親のみ行えます');
+      }
     } else if (from === 'pending' && to === 'cancelled') {
       // 取り下げ（pending）: 子のみ可
       if (role !== 'child') {
@@ -207,17 +212,11 @@ export class TasksService {
       }
     } else {
       // 上記以外の遷移はすべて不正
-      throw new BadRequestException(
-        `"${from}" から "${to}" へのステータス変更はできません`,
-      );
+      throw new BadRequestException(`"${from}" から "${to}" へのステータス変更はできません`);
     }
 
     // バリデーション通過後にステータスを更新する
-    const updated = await this.tasksRepository.updateTaskStatus(
-      taskId,
-      user.family_group_id,
-      to,
-    );
+    const updated = await this.tasksRepository.updateTaskStatus(taskId, user.family_group_id, to);
 
     if (!updated) {
       throw new NotFoundException('タスクが見つかりません');

@@ -1,11 +1,27 @@
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
-import { TaskCard } from '@/components/TaskCard';
+import { TaskCalendar } from './_components/TaskCalendar';
 import type { Task, JwtPayload } from '@fambiz/types';
 
-// タスク一覧ページ（Server Component）
-export default async function TasksPage() {
+// JST（UTC+9）の現在月を YYYY-MM 形式で返す
+function getDefaultMonth(): string {
+  const now = new Date();
+  const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return `${jstDate.getUTCFullYear()}-${String(jstDate.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// タスクカレンダーページ（Server Component）
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const { month: monthParam } = await searchParams;
+
+  // 月パラメータが未指定の場合は現在月（JST）をデフォルトにする
+  const currentMonth = monthParam ?? getDefaultMonth();
+
   const supabase = await createServerClient();
   const {
     data: { session },
@@ -40,7 +56,7 @@ export default async function TasksPage() {
   if (!familyGroupId) {
     return (
       <div>
-        <h2 className="text-2xl font-bold mb-6">タスク一覧</h2>
+        <h2 className="text-2xl font-bold mb-6">タスク</h2>
         <div className="bg-white rounded-xl shadow-sm border p-10 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <svg
@@ -74,10 +90,12 @@ export default async function TasksPage() {
     );
   }
 
-  // タスク一覧を取得する
+  // 当月のタスク一覧を取得する（month パラメータを渡す）
   let tasks: Task[] = [];
   try {
-    tasks = await apiFetch<Task[]>(`/v1/tasks?groupId=${familyGroupId}`);
+    tasks = await apiFetch<Task[]>(
+      `/v1/tasks?groupId=${familyGroupId}&month=${currentMonth}`,
+    );
   } catch {
     // APIエラー時は空のリストとして扱う（エラー境界に委譲しない）
     tasks = [];
@@ -86,7 +104,7 @@ export default async function TasksPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">タスク一覧</h2>
+        <h2 className="text-2xl font-bold">タスク</h2>
         {/* 親ユーザーのみ「タスクを登録」ボタンを表示する */}
         {role === 'parent' && (
           <Link
@@ -98,32 +116,8 @@ export default async function TasksPage() {
         )}
       </div>
 
-      {tasks.length === 0 ? (
-        // タスクが0件の場合はメッセージを表示する
-        <div className="bg-white rounded-xl shadow-sm border p-10 text-center">
-          <p className="text-gray-500">タスクはありません</p>
-          {role === 'parent' && (
-            <Link
-              href="/tasks/new"
-              className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              最初のタスクを登録する
-            </Link>
-          )}
-        </div>
-      ) : (
-        // タスクをカードリストで表示する
-        <div className="space-y-3">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              // 親ユーザーの場合のみ編集リンクを渡す
-              editHref={role === 'parent' ? `/tasks/${task.id}/edit` : undefined}
-            />
-          ))}
-        </div>
-      )}
+      {/* カレンダーコンポーネントにタスク・月・ロールを渡す */}
+      <TaskCalendar tasks={tasks} month={currentMonth} role={role} />
     </div>
   );
 }
