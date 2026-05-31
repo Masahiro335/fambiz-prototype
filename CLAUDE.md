@@ -78,7 +78,8 @@ feature/xxx   # 機能開発（例: feature/fun-task-approval）
 fix/xxx       # バグ修正
 ```
 
-- PRはすべて `develop` へマージ
+- **`feature/`・`fix/` ブランチからのPRは必ず `develop` をベースブランチ（マージ先）にする**
+- `main` への直接PRは禁止。`develop → main` のマージは別途リリース作業として行う
 - `develop → release` のマージ時にデプロイが走る
 - ブランチ名には機能ID（FUN-xxx）を含めることを推奨
 
