@@ -6,6 +6,7 @@ import { validationSchema } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { FamilyModule } from './modules/family/family.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { GoalsModule } from './modules/goals/goals.module';
 
 @Module({
   imports: [
@@ -20,6 +21,8 @@ import { TasksModule } from './modules/tasks/tasks.module';
     FamilyModule,
     // タスク管理モジュール（FUN-TASK-001〜007）
     TasksModule,
+    // 目標管理モジュール（FUN-GOAL-001〜005）
+    GoalsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -132,18 +132,18 @@
 
 ### バックエンド（NestJS）
 
-- [ ] 🟡 `apps/api/src/modules/goals/` モジュール作成
-- [ ] 🟡 FUN-GOAL-003: 目標登録API（API-GOAL-003）— 定量/定性・ボーナス金額
-- [ ] 🟡 FUN-GOAL-001: 目標一覧API（API-GOAL-001）
-- [ ] 🟡 FUN-GOAL-002: 目標詳細API（API-GOAL-002）
-- [ ] 🟡 FUN-GOAL-004: 目標削除API（API-GOAL-004）
-- [ ] 🟡 FUN-GOAL-005: 目標ステータス変更API（API-GOAL-005）— 挑戦宣言・達成判定・承認
+- [x] 🟡 `apps/api/src/modules/goals/` モジュール作成
+- [x] 🟡 FUN-GOAL-003: 目標登録API（API-GOAL-003）— 定量/定性・ボーナス金額
+- [x] 🟡 FUN-GOAL-001: 目標一覧API（API-GOAL-001）
+- [x] 🟡 FUN-GOAL-002: 目標詳細API（API-GOAL-002）
+- [x] 🟡 FUN-GOAL-004: 目標削除API（API-GOAL-004）
+- [x] 🟡 FUN-GOAL-005: 目標ステータス変更API（API-GOAL-005）— 挑戦宣言・達成判定・承認
 
 ### フロントエンド（Next.js）
 
-- [ ] 🟡 SCR-GOAL-001: 目標一覧画面（進捗プログレスバー表示）
-- [ ] 🟡 SCR-GOAL-002: 目標詳細画面（達成率・挑戦ボタン・達成判定）
-- [ ] 🟡 `components/GoalProgress` — 目標進捗コンポーネント
+- [x] 🟡 SCR-GOAL-001: 目標一覧画面（進捗プログレスバー表示）
+- [x] 🟡 SCR-GOAL-002: 目標詳細画面（達成率・挑戦ボタン・達成判定）
+- [x] 🟡 `components/GoalProgress` — 目標進捗コンポーネント
 
 ---
 
