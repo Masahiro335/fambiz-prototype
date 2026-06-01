@@ -152,6 +152,12 @@ export default async function RewardsPage({ searchParams }: RewardsPageProps) {
       {/* ページヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">報酬管理</h2>
+        <Link
+          href="/rewards/graph"
+          className="text-sm text-blue-600 hover:underline"
+        >
+          年次グラフを見る →
+        </Link>
       </div>
 
       {/* 月ナビゲーターと子セレクターを横並びに表示 */}

@@ -27,3 +27,14 @@ export interface UpdateRewardDto {
 export interface PayRewardDto {
   paid_at?: string;
 }
+
+export interface RewardGraphMonth {
+  target_month: string;
+  task_reward_total: number;
+  bonus_reward_total: number;
+  total_amount: number;
+}
+
+export interface RewardGraphResponse {
+  months: RewardGraphMonth[];
+}
