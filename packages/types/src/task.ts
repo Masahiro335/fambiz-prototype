@@ -19,6 +19,7 @@ export interface Task {
   updated_at: string;
   creator?: User;
   assignee?: User;
+  latest_completion?: TaskCompletion | null;
 }
 
 export interface TaskCompletion {

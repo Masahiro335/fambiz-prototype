@@ -18,6 +18,9 @@ const mockTasksRepository = {
   updateTask: jest.fn(),
   deleteTask: jest.fn(),
   updateTaskStatus: jest.fn(),
+  createTaskCompletion: jest.fn(),
+  approveTaskCompletion: jest.fn(),
+  cancelTaskCompletion: jest.fn(),
 };
 
 // =========================================================================
@@ -81,6 +84,11 @@ describe('TasksService', () => {
 
     // 各テスト前にモックをリセット
     jest.clearAllMocks();
+
+    // task_completions 操作メソッドのデフォルト戻り値を設定する
+    mockTasksRepository.createTaskCompletion.mockResolvedValue(undefined);
+    mockTasksRepository.approveTaskCompletion.mockResolvedValue(undefined);
+    mockTasksRepository.cancelTaskCompletion.mockResolvedValue(undefined);
   });
 
   it('サービスが正常に生成されること', () => {
@@ -420,6 +428,12 @@ describe('TasksService', () => {
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
       expect(result.status).toBe('reported');
+      // 実行報告時に task_completions レコードが作成されること
+      expect(mockTasksRepository.createTaskCompletion).toHaveBeenCalledWith(
+        taskId,
+        childUser.sub,
+        mockTask.reward_amount,
+      );
       expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
         taskId,
         childUser.family_group_id,
@@ -438,6 +452,11 @@ describe('TasksService', () => {
       const result = await service.updateTaskStatus(taskId, dto, parentUser);
 
       expect(result.status).toBe('completed');
+      // 承認時に task_completions レコードが承認済みに更新されること
+      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(
+        taskId,
+        parentUser.sub,
+      );
       expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
         taskId,
         parentUser.family_group_id,
@@ -456,6 +475,8 @@ describe('TasksService', () => {
       const result = await service.updateTaskStatus(taskId, dto, parentUser);
 
       expect(result.status).toBe('pending');
+      // 差し戻し時に task_completions レコードがソフトデリートされること
+      expect(mockTasksRepository.cancelTaskCompletion).toHaveBeenCalledWith(taskId);
       expect(mockTasksRepository.updateTaskStatus).toHaveBeenCalledWith(
         taskId,
         parentUser.family_group_id,
@@ -479,6 +500,10 @@ describe('TasksService', () => {
         parentUser.family_group_id,
         'completed',
       );
+      // 即時完了（子の報告なし）では task_completions 操作は不要
+      expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.cancelTaskCompletion).not.toHaveBeenCalled();
     });
 
     it('child が pending → completed を試みると ForbiddenException をスローすること', async () => {
@@ -503,6 +528,8 @@ describe('TasksService', () => {
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
       expect(result.status).toBe('cancelled');
+      // 取り下げ時に task_completions のソフトデリートが呼ばれること
+      expect(mockTasksRepository.cancelTaskCompletion).toHaveBeenCalledWith(taskId);
     });
 
     it('reported → cancelled を child が取り下げできること', async () => {
@@ -516,6 +543,8 @@ describe('TasksService', () => {
       const result = await service.updateTaskStatus(taskId, dto, childUser);
 
       expect(result.status).toBe('cancelled');
+      // 取り下げ時に task_completions のソフトデリートが呼ばれること
+      expect(mockTasksRepository.cancelTaskCompletion).toHaveBeenCalledWith(taskId);
     });
 
     it('completed からの遷移が BadRequestException をスローすること', async () => {

@@ -168,6 +168,40 @@ export default async function TaskDetailPage({
             </div>
           )}
 
+          {/* 実行報告日時（latest_completionが存在する場合のみ表示） */}
+          {task.latest_completion?.reported_at && (
+            <div className="py-3 flex items-center justify-between">
+              <dt className="text-sm font-medium text-gray-500">実行報告日時</dt>
+              <dd className="text-sm text-gray-800">
+                {new Date(task.latest_completion.reported_at).toLocaleDateString('ja-JP', {
+                  timeZone: 'Asia/Tokyo',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </dd>
+            </div>
+          )}
+
+          {/* 承認日時（latest_completionのapproved_atが存在する場合のみ表示） */}
+          {task.latest_completion?.approved_at && (
+            <div className="py-3 flex items-center justify-between">
+              <dt className="text-sm font-medium text-gray-500">承認日時</dt>
+              <dd className="text-sm text-gray-800">
+                {new Date(task.latest_completion.approved_at).toLocaleDateString('ja-JP', {
+                  timeZone: 'Asia/Tokyo',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </dd>
+            </div>
+          )}
+
           {/* 登録日時 */}
           <div className="py-3 flex items-center justify-between">
             <dt className="text-sm font-medium text-gray-500">登録日時</dt>
