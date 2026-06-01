@@ -19,6 +19,7 @@ export interface FindTasksFilter {
   assigneeId?: string;
   keyword?: string;
   month?: string; // YYYY-MM形式（FUN-TASK-005）
+  category?: string; // カテゴリ完全一致フィルタ（FUN-TASK-007）
 }
 
 /**
@@ -124,6 +125,11 @@ export class TasksRepository {
     // キーワード検索（task_name に対して部分一致）
     if (filter.keyword) {
       query = query.ilike('task_name', `%${filter.keyword}%`);
+    }
+
+    // カテゴリフィルタ（指定された場合のみ）
+    if (filter.category) {
+      query = query.eq('category', filter.category);
     }
 
     // 月フィルタ: JST月初・翌月初をUTCに変換して due_date または start_time が含まれるタスクをフィルタする（FUN-TASK-005）
