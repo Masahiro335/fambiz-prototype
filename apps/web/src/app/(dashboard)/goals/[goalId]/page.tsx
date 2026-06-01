@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { GoalStatusActions } from './_components/GoalStatusActions';
 import { GoalDeleteButton } from './_components/GoalDeleteButton';
-import type { Goal, GoalStatus, JwtPayload } from '@fambiz/types';
+import type { Goal, GoalStatus, JwtPayload, Task } from '@fambiz/types';
 
 // ステータスのラベルとカラークラスを定義する
 const statusConfig: Record<GoalStatus, { label: string; className: string }> = {
@@ -75,6 +75,17 @@ export default async function GoalDetailPage({
     redirect('/goals');
   }
 
+  // 紐づくタスクの名前を取得する（task_id がある場合のみ）
+  let linkedTaskName: string | null = null;
+  if (goal.task_id) {
+    try {
+      const task = await apiFetch<Task>(`/v1/tasks/${goal.task_id}`);
+      linkedTaskName = task.task_name;
+    } catch {
+      // タスクが取得できない場合は表示しない
+    }
+  }
+
   const status = statusConfig[goal.status] ?? {
     label: goal.status,
     className: 'bg-gray-100 text-gray-600',
@@ -117,6 +128,14 @@ export default async function GoalDetailPage({
             <dd className="text-sm text-gray-800">{targetMonthLabel}</dd>
           </div>
 
+          {/* 紐づくタスク名（設定されている場合のみ表示） */}
+          {linkedTaskName && (
+            <div className="py-3 flex items-center justify-between">
+              <dt className="text-sm font-medium text-gray-500">タスク名</dt>
+              <dd className="text-sm text-gray-800">{linkedTaskName}</dd>
+            </div>
+          )}
+
           {/* ボーナス金額 */}
           <div className="py-3 flex items-center justify-between">
             <dt className="text-sm font-medium text-gray-500">ボーナス金額</dt>
@@ -138,6 +157,23 @@ export default async function GoalDetailPage({
             <div className="py-3 flex items-center justify-between">
               <dt className="text-sm font-medium text-gray-500">行動</dt>
               <dd className="text-sm text-gray-800">{goal.action}</dd>
+            </div>
+          )}
+
+          {/* AND条件（目標回数・行動の両方が設定されている場合のみ表示） */}
+          {goal.target_count !== null && goal.action !== null && (
+            <div className="py-3 flex items-center justify-between">
+              <dt className="text-sm font-medium text-gray-500">達成条件</dt>
+              <dd className="text-sm text-gray-800">
+                {goal.and_condition_flag ? (
+                  <span className="inline-flex items-center gap-1 text-blue-700 font-medium">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-100 text-xs">✓</span>
+                    回数と行動の両方を達成する必要がある
+                  </span>
+                ) : (
+                  '回数または行動のどちらかを達成'
+                )}
+              </dd>
             </div>
           )}
 

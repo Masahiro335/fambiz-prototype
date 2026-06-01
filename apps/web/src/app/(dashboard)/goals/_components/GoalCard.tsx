@@ -8,6 +8,8 @@ interface GoalCardProps {
   goal: Goal;
   /** 進捗率（0〜100）。API が返す場合のみ渡す */
   progressRate?: number;
+  /** 紐づくタスクの名前。task_id がある場合に親コンポーネントから渡す */
+  taskName?: string;
 }
 
 // ステータスのラベルとカラークラスを定義する
@@ -35,7 +37,7 @@ const statusConfig: Record<GoalStatus, { label: string; className: string }> = {
 };
 
 // 目標カードコンポーネント（一覧表示用）
-export function GoalCard({ goal, progressRate }: GoalCardProps) {
+export function GoalCard({ goal, progressRate, taskName }: GoalCardProps) {
   const status = statusConfig[goal.status] ?? {
     label: goal.status,
     className: 'bg-gray-100 text-gray-600',
@@ -59,6 +61,14 @@ export function GoalCard({ goal, progressRate }: GoalCardProps) {
 
           {/* 対象月 */}
           <p className="text-xs text-gray-400 mt-1">{targetMonthLabel}</p>
+
+          {/* タスク名（紐づくタスクがある場合のみ表示） */}
+          {taskName && (
+            <p className="text-xs text-gray-500 mt-1">
+              タスク:{' '}
+              <span className="font-medium text-gray-700">{taskName}</span>
+            </p>
+          )}
         </div>
 
         {/* ステータスバッジ */}
