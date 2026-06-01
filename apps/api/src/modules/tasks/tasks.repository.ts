@@ -8,7 +8,7 @@ import {
 } from '@supabase/supabase-js';
 import WebSocket from 'ws';
 import { fromZonedTime } from 'date-fns-tz';
-import type { Task, TaskStatus } from '@fambiz/types';
+import type { Task, TaskCompletion, TaskStatus } from '@fambiz/types';
 
 /**
  * タスク一覧取得のフィルタ条件。
@@ -270,9 +270,10 @@ export class TasksRepository {
   /**
    * タスクIDで特定のタスクを1件取得する。
    * group_id フィルタで家族グループのデータ分離を保証する。
+   * latest_completion として最新の完了記録も含めて返す。
    * @param taskId - タスクID
    * @param groupId - 家族グループID（データ分離用）
-   * @returns タスクが存在する場合は Task オブジェクト、存在しない場合は null
+   * @returns タスクが存在する場合は Task オブジェクト（latest_completion付き）、存在しない場合は null
    */
   async findById(taskId: string, groupId: string): Promise<Task | null> {
     const { data, error } = await this.db
@@ -288,6 +289,102 @@ export class TasksRepository {
 
     if (error) {
       throw new InternalServerErrorException('タスクの取得に失敗しました');
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    // 最新の完了記録を取得してタスクに付加する
+    const latestCompletion = await this.findLatestCompletion(taskId);
+
+    return { ...data, latest_completion: latestCompletion };
+  }
+
+  /**
+   * task_completions テーブルに実行報告レコードを作成する（FUN-TASK-008）。
+   * @param taskId - タスクID
+   * @param childId - 報告した子のユーザーID
+   * @param rewardAmount - 確定報酬金額（タスクの reward_amount を使用）
+   */
+  async createTaskCompletion(taskId: string, childId: string, rewardAmount: number): Promise<void> {
+    const { error } = await this.db.from('task_completions').insert({
+      task_id: taskId,
+      child_id: childId,
+      confirmed_reward: rewardAmount,
+    });
+
+    if (error) {
+      throw new InternalServerErrorException('実行報告の作成に失敗しました');
+    }
+  }
+
+  /**
+   * task_completions テーブルの該当レコードを承認済みに更新する（FUN-TASK-008）。
+   * deleted_flag = false のレコードを対象とする。
+   * @param taskId - タスクID
+   * @param approvedBy - 承認した親のユーザーID
+   */
+  async approveTaskCompletion(taskId: string, approvedBy: string): Promise<void> {
+    const { error } = await this.db
+      .from('task_completions')
+      .update({
+        approved_by: approvedBy,
+        // サーバー時間をISO 8601形式で設定する（タイムゾーン考慮）
+        approved_at: new Date().toISOString(),
+      })
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録の承認に失敗しました');
+    }
+  }
+
+  /**
+   * task_completions テーブルの該当レコードをソフトデリートする（FUN-TASK-008）。
+   * 差し戻し・取り下げ時に呼び出す。deleted_flag = false のレコードを対象とする。
+   * 対象レコードが存在しない場合もエラーにしない（pending→cancelled など）。
+   * @param taskId - タスクID
+   */
+  async cancelTaskCompletion(taskId: string): Promise<void> {
+    const { data, error } = await this.db
+      .from('task_completions')
+      .update({ deleted_flag: true })
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録のキャンセルに失敗しました');
+    }
+
+    // 対象レコードが存在しない場合（data === null）はエラーにしない
+    void data;
+  }
+
+  /**
+   * task_completions テーブルから deleted_flag = false の最新レコードを1件取得する（FUN-TASK-008）。
+   * reported_at 降順でソートし最初の1件を返す。存在しない場合は null を返す。
+   * @param taskId - タスクID
+   * @returns 最新の完了記録、存在しない場合は null
+   */
+  async findLatestCompletion(taskId: string): Promise<TaskCompletion | null> {
+    const { data, error } = await this.db
+      .from('task_completions')
+      .select(
+        'id, task_id, child_id, reported_at, approved_by, approved_at, confirmed_reward, created_at, updated_at',
+      )
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false)
+      // 最新の報告を取得するため reported_at 降順でソート
+      .order('reported_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録の取得に失敗しました');
     }
 
     return data ?? null;

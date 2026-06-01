@@ -217,6 +217,26 @@ export class TasksService {
       throw new BadRequestException(`"${from}" から "${to}" へのステータス変更はできません`);
     }
 
+    // ステータス遷移に応じて task_completions テーブルを操作する（FUN-TASK-008）
+    if (from === 'pending' && to === 'reported') {
+      // 実行報告: task_completions にレコードを作成する
+      await this.tasksRepository.createTaskCompletion(taskId, user.sub, currentTask.reward_amount);
+    } else if (from === 'reported' && to === 'completed') {
+      // 承認: task_completions の該当レコードに承認情報を設定する
+      await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
+    } else if (from === 'reported' && to === 'pending') {
+      // 差し戻し: task_completions の該当レコードをソフトデリートする
+      await this.tasksRepository.cancelTaskCompletion(taskId);
+    } else if (from === 'pending' && to === 'cancelled') {
+      // 取り下げ（pending → cancelled）: task_completions の該当レコードをソフトデリートする
+      // pending 状態の場合は完了記録が存在しないケースもあるため、エラーにしない
+      await this.tasksRepository.cancelTaskCompletion(taskId);
+    } else if (from === 'reported' && to === 'cancelled') {
+      // 取り下げ（reported → cancelled）: task_completions の該当レコードをソフトデリートする
+      await this.tasksRepository.cancelTaskCompletion(taskId);
+    }
+    // pending → completed（即時完了）の場合は子の報告なしで完了するため task_completions 操作は不要
+
     // バリデーション通過後にステータスを更新する
     const updated = await this.tasksRepository.updateTaskStatus(taskId, user.family_group_id, to);
 

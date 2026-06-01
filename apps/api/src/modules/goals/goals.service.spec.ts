@@ -259,20 +259,16 @@ describe('GoalsService', () => {
 
       expect(result).toEqual(updatedMockGoal);
       // 正しい引数でリポジトリが呼ばれること
-      expect(mockGoalsRepository.update).toHaveBeenCalledWith(
-        goalId,
-        parentUser.family_group_id,
-        {
-          goal_name: '今月は洗濯を15回する',
-          goal_reward: 700,
-          target_month: undefined,
-          assignee_id: undefined,
-          task_id: undefined,
-          target_count: undefined,
-          action: undefined,
-          and_condition_flag: undefined,
-        },
-      );
+      expect(mockGoalsRepository.update).toHaveBeenCalledWith(goalId, parentUser.family_group_id, {
+        goal_name: '今月は洗濯を15回する',
+        goal_reward: 700,
+        target_month: undefined,
+        assignee_id: undefined,
+        task_id: undefined,
+        target_count: undefined,
+        action: undefined,
+        and_condition_flag: undefined,
+      });
     });
 
     it('目標が存在しない場合は NotFoundException をスロー', async () => {
@@ -507,9 +503,9 @@ describe('GoalsService', () => {
       // findById が null を返す（目標が存在しないまたは他グループの目標）
       mockGoalsRepository.findById.mockResolvedValue(null);
 
-      await expect(service.updateGoalStatus('non-existent-goal-id', dto, childUser)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateGoalStatus('non-existent-goal-id', dto, childUser),
+      ).rejects.toThrow(NotFoundException);
 
       // 存在確認でエラーになるためステータス更新リポジトリは呼ばれないこと
       expect(mockGoalsRepository.updateStatus).not.toHaveBeenCalled();
