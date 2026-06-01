@@ -234,8 +234,14 @@ export class TasksService {
     } else if (from === 'reported' && to === 'cancelled') {
       // 取り下げ（reported → cancelled）: task_completions の該当レコードをソフトデリートする
       await this.tasksRepository.cancelTaskCompletion(taskId);
+    } else if (from === 'pending' && to === 'completed') {
+      // 即時完了: assignee が設定されている場合、task_completions を作成して即時承認する
+      // これにより報酬明細・合計金額の集計対象に含まれるようになる
+      if (currentTask.assignee_id) {
+        await this.tasksRepository.createTaskCompletion(taskId, currentTask.assignee_id, currentTask.reward_amount);
+        await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
+      }
     }
-    // pending → completed（即時完了）の場合は子の報告なしで完了するため task_completions 操作は不要
 
     // バリデーション通過後にステータスを更新する
     const updated = await this.tasksRepository.updateTaskStatus(taskId, user.family_group_id, to);

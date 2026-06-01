@@ -484,7 +484,7 @@ describe('TasksService', () => {
       );
     });
 
-    it('pending → completed を parent が即時完了できること', async () => {
+    it('pending → completed を parent が即時完了できること（assignee あり: task_completions を作成して即時承認）', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
       mockTasksRepository.findById.mockResolvedValue(pendingTask);
       mockTasksRepository.updateTaskStatus.mockResolvedValue({
@@ -500,10 +500,31 @@ describe('TasksService', () => {
         parentUser.family_group_id,
         'completed',
       );
-      // 即時完了（子の報告なし）では task_completions 操作は不要
+      // 即時完了（assignee あり）: task_completions を作成して即時承認する
+      expect(mockTasksRepository.createTaskCompletion).toHaveBeenCalledWith(
+        taskId,
+        pendingTask.assignee_id,
+        pendingTask.reward_amount,
+      );
+      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(taskId, parentUser.sub);
+      expect(mockTasksRepository.cancelTaskCompletion).not.toHaveBeenCalled();
+    });
+
+    it('pending → completed を parent が即時完了するとき assignee なしなら task_completions 操作をしないこと', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      const taskWithoutAssignee: Task = { ...pendingTask, assignee_id: null };
+      mockTasksRepository.findById.mockResolvedValue(taskWithoutAssignee);
+      mockTasksRepository.updateTaskStatus.mockResolvedValue({
+        ...taskWithoutAssignee,
+        status: 'completed',
+      });
+
+      const result = await service.updateTaskStatus(taskId, dto, parentUser);
+
+      expect(result.status).toBe('completed');
+      // assignee がいないため task_completions は作成しない
       expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
-      expect(mockTasksRepository.cancelTaskCompletion).not.toHaveBeenCalled();
     });
 
     it('child が pending → completed を試みると ForbiddenException をスローすること', async () => {
