@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { TaskSearchModal } from '@/components/TaskSearchModal';
 import type { GroupMember } from '@fambiz/types';
 
 // 目標登録フォームコンポーネント（Client Component）
@@ -22,6 +23,8 @@ export function CreateGoalForm({
   const [goalReward, setGoalReward] = useState('');
   const [targetMonth, setTargetMonth] = useState(defaultMonth);
   const [assigneeId, setAssigneeId] = useState('');
+  const [taskId, setTaskId] = useState('');
+  const [selectedTaskName, setSelectedTaskName] = useState('');
   const [targetCount, setTargetCount] = useState('');
   const [action, setAction] = useState('');
   const [andConditionFlag, setAndConditionFlag] = useState(false);
@@ -29,6 +32,7 @@ export function CreateGoalForm({
   // UI状態
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
 
   // 担当者の選択肢（子ユーザーのみ）
   const childMembers = members.filter((m) => m.user?.role === 'child');
@@ -87,6 +91,7 @@ export function CreateGoalForm({
         goalReward: rewardNum,
         targetMonth,
         ...(assigneeId ? { assigneeId } : {}),
+        ...(taskId ? { taskId } : {}),
         ...(targetCountNum !== undefined ? { targetCount: targetCountNum } : {}),
         ...(action.trim() ? { action: action.trim() } : {}),
         ...(andConditionFlag ? { andConditionFlag: true } : {}),
@@ -125,7 +130,21 @@ export function CreateGoalForm({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6 max-w-lg">
+    <>
+      {/* タスク検索モーダル */}
+      {showTaskModal && (
+        <TaskSearchModal
+          groupId={groupId}
+          onSelect={(id, name) => {
+            setTaskId(id);
+            setSelectedTaskName(name);
+            setShowTaskModal(false);
+          }}
+          onClose={() => setShowTaskModal(false)}
+        />
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border p-6 max-w-lg">
       {/* エラーメッセージ表示エリア */}
       {errorMessage && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -149,6 +168,37 @@ export function CreateGoalForm({
             placeholder="例：今月は皿洗いを10回する"
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+
+        {/* タスク名（タスク検索モーダルで選択） */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">タスク名</label>
+          <div className="flex gap-2">
+            <div className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 bg-gray-50 min-h-[42px] flex items-center">
+              {selectedTaskName ? (
+                <span>{selectedTaskName}</span>
+              ) : (
+                <span className="text-gray-400">タスク未選択</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTaskModal(true)}
+              className="px-4 py-2.5 bg-white text-blue-600 text-sm font-medium rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors whitespace-nowrap"
+            >
+              タスク検索
+            </button>
+            {taskId && (
+              <button
+                type="button"
+                onClick={() => { setTaskId(''); setSelectedTaskName(''); }}
+                className="px-3 py-2.5 text-gray-400 hover:text-gray-600 text-sm transition-colors"
+                title="クリア"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 対象月 */}
@@ -284,5 +334,6 @@ export function CreateGoalForm({
         </div>
       </form>
     </div>
+    </>
   );
 }
