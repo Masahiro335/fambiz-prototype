@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { FamilyModule } from './modules/family/family.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { GoalsModule } from './modules/goals/goals.module';
+import { RewardsModule } from './modules/rewards/rewards.module';
 
 @Module({
   imports: [
@@ -23,6 +24,8 @@ import { GoalsModule } from './modules/goals/goals.module';
     TasksModule,
     // 目標管理モジュール（FUN-GOAL-001〜005）
     GoalsModule,
+    // 報酬管理モジュール（FUN-REWARD-001〜005）
+    RewardsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
