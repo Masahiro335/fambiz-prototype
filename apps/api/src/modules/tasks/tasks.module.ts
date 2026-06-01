@@ -3,6 +3,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { TasksRepository } from './tasks.repository';
+import { RewardsRepository } from '../rewards/rewards.repository';
 import { JwtStrategy } from '../../shared/strategies/jwt.strategy';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 
@@ -16,7 +17,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [TasksController],
-  providers: [TasksService, TasksRepository, JwtStrategy, RolesGuard],
+  providers: [TasksService, TasksRepository, RewardsRepository, JwtStrategy, RolesGuard],
   exports: [TasksService],
 })
 export class TasksModule {}

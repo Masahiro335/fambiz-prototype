@@ -116,16 +116,16 @@
 
 ### バックエンド（NestJS）
 
-- [ ] 🔴 `apps/api/src/modules/rewards/` モジュール作成
-- [ ] 🔴 FUN-REWARD-001: 月次報酬集計API（API-REWARD-001）— 端数切り捨て実装
-- [ ] 🔴 FUN-REWARD-003: 月次評価登録API（API-REWARD-002）
-- [ ] 🔴 支払い完了API — 累積報酬リセット処理（ADR-0004参照）
-- [ ] 🟡 FUN-REWARD-004: 報酬グラフ用データAPI（API-REWARD-003）
-- [ ] 🟡 FUN-REWARD-005: 報酬テーブル用データAPI（API-REWARD-004）
+- [x] 🔴 `apps/api/src/modules/rewards/` モジュール作成
+- [x] 🔴 FUN-REWARD-001: 月次報酬集計API（API-REWARD-001）— 端数切り捨て実装
+- [x] 🔴 FUN-REWARD-003: 月次評価登録API（API-REWARD-002）
+- [x] 🔴 支払い完了API — 累積報酬リセット処理（ADR-0004参照）
+- [x] 🟡 FUN-REWARD-004: 報酬グラフ用データAPI（API-REWARD-003）
+- [x] 🟡 FUN-REWARD-005: 報酬テーブル用データAPI（API-REWARD-004）
 
 ### フロントエンド（Next.js）
 
-- [ ] 🔴 SCR-REWARD-001: 報酬管理画面（確定報酬・支払い完了ボタン）
+- [x] 🔴 SCR-REWARD-001: 報酬管理画面（確定報酬・支払い完了ボタン）
 - [ ] 🟡 SCR-REWARD-002: 報酬グラフ確認画面
 
 ---

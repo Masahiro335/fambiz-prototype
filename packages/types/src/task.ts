@@ -25,6 +25,10 @@ export interface Task {
 export interface TaskCompletion {
   id: string;
   task_id: string;
+  /** タスク名（報酬明細取得時に付与） */
+  task_name?: string;
+  /** タスク分類（報酬明細取得時に付与） */
+  category?: string | null;
   child_id: string;
   reported_at: string;
   approved_by: string | null;
