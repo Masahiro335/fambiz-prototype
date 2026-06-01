@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { TasksRepository } from './tasks.repository';
+import { RewardsRepository } from '../rewards/rewards.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
@@ -21,6 +22,14 @@ const mockTasksRepository = {
   createTaskCompletion: jest.fn(),
   approveTaskCompletion: jest.fn(),
   cancelTaskCompletion: jest.fn(),
+};
+
+// =========================================================================
+// RewardsRepository のモック
+// =========================================================================
+
+const mockRewardsRepository = {
+  findByChildAndMonth: jest.fn(),
 };
 
 // =========================================================================
@@ -77,6 +86,10 @@ describe('TasksService', () => {
           provide: TasksRepository,
           useValue: mockTasksRepository,
         },
+        {
+          provide: RewardsRepository,
+          useValue: mockRewardsRepository,
+        },
       ],
     }).compile();
 
@@ -89,6 +102,8 @@ describe('TasksService', () => {
     mockTasksRepository.createTaskCompletion.mockResolvedValue(undefined);
     mockTasksRepository.approveTaskCompletion.mockResolvedValue(undefined);
     mockTasksRepository.cancelTaskCompletion.mockResolvedValue(undefined);
+    // 当月の報酬がデフォルトで未払い（null）になるよう設定する
+    mockRewardsRepository.findByChildAndMonth.mockResolvedValue(null);
   });
 
   it('サービスが正常に生成されること', () => {
@@ -525,6 +540,21 @@ describe('TasksService', () => {
       // assignee がいないため task_completions は作成しない
       expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
+    });
+
+    it('当月の報酬が paid 済みの場合、即時完了で BadRequestException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTask);
+      // 当月報酬が paid 済みをシミュレート
+      mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
+
+      await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
     });
 
     it('child が pending → completed を試みると ForbiddenException をスローすること', async () => {

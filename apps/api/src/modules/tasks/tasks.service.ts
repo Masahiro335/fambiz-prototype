@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Task, TaskStatus, JwtPayload } from '@fambiz/types';
 import { TasksRepository } from './tasks.repository';
+import { RewardsRepository } from '../rewards/rewards.repository';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
@@ -15,7 +16,10 @@ import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
  */
 @Injectable()
 export class TasksService {
-  constructor(private readonly tasksRepository: TasksRepository) {}
+  constructor(
+    private readonly tasksRepository: TasksRepository,
+    private readonly rewardsRepository: RewardsRepository,
+  ) {}
 
   /**
    * 新しいタスクを作成する（FUN-TASK-001）。
@@ -238,6 +242,19 @@ export class TasksService {
       // 即時完了: assignee が設定されている場合、task_completions を作成して即時承認する
       // これにより報酬明細・合計金額の集計対象に含まれるようになる
       if (currentTask.assignee_id) {
+        // 当月（JST）の報酬が paid 済みの場合は即時完了を拒否する（ADR-0004 参照）
+        // paid 後に完了した task_completions は当月にも翌月にも集計されないため
+        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const targetMonth = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}`;
+        const existingReward = await this.rewardsRepository.findByChildAndMonth(
+          currentTask.assignee_id,
+          targetMonth,
+        );
+        if (existingReward?.status === 'paid') {
+          throw new BadRequestException(
+            `${targetMonth} の報酬は支払い済みのため、即時完了はできません。来月以降に実施してください`,
+          );
+        }
         await this.tasksRepository.createTaskCompletion(taskId, currentTask.assignee_id, currentTask.reward_amount);
         await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
       }
