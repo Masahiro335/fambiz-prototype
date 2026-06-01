@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { GoalList } from './_components/GoalList';
-import type { Goal, JwtPayload } from '@fambiz/types';
+import type { Goal, JwtPayload, Task } from '@fambiz/types';
 
 // JST（UTC+9）の現在月を YYYY-MM 形式で返す
 function getDefaultMonth(): string {
@@ -95,6 +95,18 @@ export default async function GoalsPage() {
     goals = [];
   }
 
+  // 目標に紐づくタスク名を表示するため、グループのタスク一覧を取得してIDと名前のマップを作る
+  let taskNameMap: Record<string, string> = {};
+  const linkedTaskIds = goals.map((g) => g.task_id).filter((id): id is string => id !== null);
+  if (linkedTaskIds.length > 0) {
+    try {
+      const tasks = await apiFetch<Task[]>(`/v1/tasks?groupId=${familyGroupId}`);
+      taskNameMap = Object.fromEntries(tasks.map((t) => [t.id, t.task_name]));
+    } catch {
+      // タスク取得失敗時はタスク名を空表示にする
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -116,7 +128,7 @@ export default async function GoalsPage() {
       </p>
 
       {/* 目標一覧コンポーネント */}
-      <GoalList goals={goals} />
+      <GoalList goals={goals} taskNameMap={taskNameMap} />
     </div>
   );
 }

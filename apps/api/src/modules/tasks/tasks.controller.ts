@@ -134,6 +134,11 @@ export class TasksController {
     required: false,
     description: 'カレンダー表示用の対象月（YYYY-MM・FUN-TASK-005）',
   })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    description: 'カテゴリフィルタ（掃除/料理/洗濯/その他）',
+  })
   @ApiResponse({ status: 200, description: 'タスク一覧取得成功', type: [TaskResponseDto] })
   @ApiResponse({ status: 401, description: '未認証' })
   @ApiResponse({ status: 403, description: '権限なし（他グループへのアクセス）' })
@@ -144,8 +149,9 @@ export class TasksController {
     @Query('assigneeId') assigneeId?: string,
     @Query('keyword') keyword?: string,
     @Query('month') month?: string,
+    @Query('category') category?: string,
   ): Promise<TaskResponseDto[]> {
-    return this.tasksService.findAll(groupId, user, status, assigneeId, keyword, month);
+    return this.tasksService.findAll(groupId, user, status, assigneeId, keyword, month, category);
   }
 
   /**

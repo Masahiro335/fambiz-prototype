@@ -5,11 +5,13 @@ import type { Goal } from '@fambiz/types';
 
 interface GoalListProps {
   goals: Goal[];
+  /** taskId → task_name のマップ。タスク名表示に使用する */
+  taskNameMap?: Record<string, string>;
 }
 
 // 目標一覧コンポーネント
 // 目標が空の場合は空状態メッセージを表示する
-export function GoalList({ goals }: GoalListProps) {
+export function GoalList({ goals, taskNameMap = {} }: GoalListProps) {
   if (goals.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border p-10 max-w-md text-center">
@@ -41,7 +43,11 @@ export function GoalList({ goals }: GoalListProps) {
   return (
     <div className="space-y-3">
       {goals.map((goal) => (
-        <GoalCard key={goal.id} goal={goal} />
+        <GoalCard
+          key={goal.id}
+          goal={goal}
+          taskName={goal.task_id ? taskNameMap[goal.task_id] : undefined}
+        />
       ))}
     </div>
   );

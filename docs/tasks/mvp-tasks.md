@@ -98,14 +98,14 @@
 - [x] 🔴 FUN-TASK-004: タスクステータス変更API（API-TASK-003）— 承認・差し戻し・取り下げ
 - [x] 🔴 FUN-TASK-006: タスク一覧API（API-TASK-005）
 - [x] 🟡 FUN-TASK-005: タスクカレンダーAPI（API-TASK-004）
-- [ ] 🟡 FUN-TASK-007: タスク検索API（API-TASK-007）
+- [x] 🟡 FUN-TASK-007: タスク検索API（API-TASK-007）
 - [x] 🔴 ステータス遷移バリデーション（重複報告禁止・期限切れ自動処理）
 
 ### フロントエンド（Next.js）
 
 - [x] 🔴 SCR-TASK-001: タスク一覧画面（親用: 承認ボタン付き / 子用: 報告ボタン付き）
 - [x] 🔴 SCR-TASK-002: タスク詳細画面（ステータス表示・アクション）
-- [ ] 🟡 SCR-TASK-005: タスク検索画面
+- [x] 🟡 SCR-TASK-005: タスク検索画面
 - [x] 🔴 `components/TaskCard` — タスクカードコンポーネント
 
 ---

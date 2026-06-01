@@ -323,7 +323,13 @@ paths:
       - name: keyword
         in: query
         required: false
-        description: タスク名のキーワード検索（FUN-TASK-007）
+        description: タスク名のキーワード検索・部分一致（FUN-TASK-007）
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        description: 分類フィルタ・完全一致（FUN-TASK-007）。掃除 / 料理 / 洗濯 / その他
         schema:
           type: string
       - name: month

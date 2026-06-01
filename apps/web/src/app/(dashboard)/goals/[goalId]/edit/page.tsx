@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { EditGoalForm } from './_components/EditGoalForm';
-import type { Goal, GroupMember, JwtPayload } from '@fambiz/types';
+import type { Goal, GroupMember, JwtPayload, Task } from '@fambiz/types';
 
 // 目標編集ページ（Server Component）
 // 親ユーザーのみアクセス可能。子がアクセスした場合は目標一覧へリダイレクトする。
@@ -70,10 +70,26 @@ export default async function EditGoalPage({
     members = [];
   }
 
+  // 既存の task_id がある場合、タスク名を取得して編集フォームの初期値として渡す
+  let initialTaskName: string | undefined = undefined;
+  if (goal.task_id) {
+    try {
+      const task = await apiFetch<Task>(`/v1/tasks/${goal.task_id}`);
+      initialTaskName = task.task_name;
+    } catch {
+      // タスクが取得できない場合は空のまま
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">目標を編集</h2>
-      <EditGoalForm goal={goal} members={members} />
+      <EditGoalForm
+        goal={goal}
+        members={members}
+        groupId={familyGroupId}
+        initialTaskName={initialTaskName}
+      />
     </div>
   );
 }

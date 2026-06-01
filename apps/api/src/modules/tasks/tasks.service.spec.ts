@@ -161,6 +161,8 @@ describe('TasksService', () => {
         status: undefined,
         assigneeId: undefined,
         keyword: undefined,
+        month: undefined,
+        category: undefined,
       });
     });
 
@@ -175,6 +177,8 @@ describe('TasksService', () => {
         status: undefined,
         assigneeId: undefined,
         keyword: undefined,
+        month: undefined,
+        category: undefined,
       });
     });
 
@@ -196,6 +200,8 @@ describe('TasksService', () => {
         status: 'pending',
         assigneeId: 'child-user-id-001',
         keyword: '食器',
+        month: undefined,
+        category: undefined,
       });
     });
 
@@ -234,6 +240,59 @@ describe('TasksService', () => {
         assigneeId: undefined,
         keyword: undefined,
         month: '2026-05',
+        category: undefined,
+      });
+    });
+
+    it('category フィルタを指定してタスク一覧を取得できること（FUN-TASK-007）', async () => {
+      // カテゴリでフィルタされたタスク一覧（掃除カテゴリのみ）
+      const cleaningTask: Task = { ...mockTask, category: '掃除' };
+      mockTasksRepository.findAll.mockResolvedValue([cleaningTask]);
+
+      const result = await service.findAll(
+        groupId,
+        parentUser,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        '掃除',
+      );
+
+      expect(result).toEqual([cleaningTask]);
+      // category フィルタが正しくリポジトリへ渡されること
+      expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
+        groupId,
+        status: undefined,
+        assigneeId: undefined,
+        keyword: undefined,
+        month: undefined,
+        category: '掃除',
+      });
+    });
+
+    it('複数フィルタ（status・keyword・category）を組み合わせてタスク一覧を取得できること（FUN-TASK-007）', async () => {
+      mockTasksRepository.findAll.mockResolvedValue(mockTasks);
+
+      const result = await service.findAll(
+        groupId,
+        parentUser,
+        'pending',
+        undefined,
+        '掃除',
+        undefined,
+        '料理',
+      );
+
+      expect(result).toEqual(mockTasks);
+      // 全フィルタが正しくリポジトリへ渡されること
+      expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
+        groupId,
+        status: 'pending',
+        assigneeId: undefined,
+        keyword: '掃除',
+        month: undefined,
+        category: '料理',
       });
     });
   });
