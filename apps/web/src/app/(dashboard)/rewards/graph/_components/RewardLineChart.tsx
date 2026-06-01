@@ -44,11 +44,15 @@ export function RewardLineChart({ months }: RewardLineChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis
-            tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
+            tickFormatter={(v: unknown) => `${(Number(v) / 1000).toFixed(0)}k`}
             tick={{ fontSize: 12 }}
             width={40}
           />
-          <Tooltip formatter={(value: number) => formatYen(value)} />
+          <Tooltip
+            formatter={(value: unknown) =>
+              typeof value === 'number' ? formatYen(value) : String(value ?? '')
+            }
+          />
           <Legend />
           <Line
             type="monotone"
