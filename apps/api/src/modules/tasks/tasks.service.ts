@@ -226,11 +226,12 @@ export class TasksService {
       // 実行報告: task_completions にレコードを作成する
       await this.tasksRepository.createTaskCompletion(taskId, user.sub, currentTask.reward_amount);
     } else if (from === 'reported' && to === 'completed') {
-      // 承認: 当月の報酬が paid 済みの場合は承認を拒否する
+      // 承認: タスクの start_time 月の報酬が paid 済みの場合は承認を拒否する
       // paid 後に承認した task_completions は集計対象外になるため
       if (currentTask.assignee_id) {
-        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-        const targetMonth = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}`;
+        const base = currentTask.start_time ? new Date(currentTask.start_time) : new Date();
+        const taskMonthJst = new Date(base.getTime() + 9 * 60 * 60 * 1000);
+        const targetMonth = `${taskMonthJst.getUTCFullYear()}-${String(taskMonthJst.getUTCMonth() + 1).padStart(2, '0')}`;
         const existingReward = await this.rewardsRepository.findByChildAndMonth(
           currentTask.assignee_id,
           targetMonth,
@@ -257,10 +258,11 @@ export class TasksService {
       // 即時完了: assignee が設定されている場合、task_completions を作成して即時承認する
       // これにより報酬明細・合計金額の集計対象に含まれるようになる
       if (currentTask.assignee_id) {
-        // 当月（JST）の報酬が paid 済みの場合は即時完了を拒否する（ADR-0004 参照）
-        // paid 後に完了した task_completions は当月にも翌月にも集計されないため
-        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-        const targetMonth = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}`;
+        // タスクの start_time 月の報酬が paid 済みの場合は即時完了を拒否する（ADR-0004 参照）
+        // paid 後に完了した task_completions は集計対象外になるため
+        const base = currentTask.start_time ? new Date(currentTask.start_time) : new Date();
+        const taskMonthJst = new Date(base.getTime() + 9 * 60 * 60 * 1000);
+        const targetMonth = `${taskMonthJst.getUTCFullYear()}-${String(taskMonthJst.getUTCMonth() + 1).padStart(2, '0')}`;
         const existingReward = await this.rewardsRepository.findByChildAndMonth(
           currentTask.assignee_id,
           targetMonth,
