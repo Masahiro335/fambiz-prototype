@@ -63,7 +63,7 @@ export default async function FamilyPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">家族管理</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">家族管理</h2>
 
       {familyGroupId ? (
         // グループ参加済みの場合はメンバー一覧を表示する

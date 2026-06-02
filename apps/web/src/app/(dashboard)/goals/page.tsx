@@ -50,7 +50,7 @@ export default async function GoalsPage() {
   if (!familyGroupId) {
     return (
       <div>
-        <h2 className="text-2xl font-bold mb-6">目標</h2>
+        <h2 className="text-2xl font-bold text-black mb-6">目標</h2>
         <div className="bg-white rounded-xl shadow-sm border p-10 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <svg
@@ -110,7 +110,7 @@ export default async function GoalsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">目標</h2>
+        <h2 className="text-2xl font-bold text-black">目標</h2>
         {/* 親ユーザーのみ「目標を登録」ボタンを表示する */}
         {role === 'parent' && (
           <Link

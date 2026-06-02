@@ -75,7 +75,7 @@ export default async function RewardGraphPage({ searchParams }: RewardGraphPageP
   if (!familyGroupId) {
     return (
       <div>
-        <h2 className="text-2xl font-bold mb-6">報酬グラフ</h2>
+        <h2 className="text-2xl font-bold text-black mb-6">報酬グラフ</h2>
         <div className="bg-white rounded-xl shadow-sm border p-10 max-w-md text-center">
           <p className="text-sm text-gray-500 mb-4">
             報酬グラフを確認するには家族グループへの参加が必要です。
@@ -129,7 +129,7 @@ export default async function RewardGraphPage({ searchParams }: RewardGraphPageP
     <div>
       {/* ページヘッダーとナビゲーション */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">報酬グラフ</h2>
+        <h2 className="text-2xl font-bold text-black">報酬グラフ</h2>
         <Link
           href="/rewards"
           className="text-sm text-blue-600 hover:underline"

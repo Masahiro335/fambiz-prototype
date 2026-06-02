@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { HeaderNav } from './_components/HeaderNav';
+import { HomeButton } from './_components/HomeButton';
 import type { JwtPayload } from '@fambiz/types';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,9 +31,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-600 shrink-0">
-            FamBiz
-          </Link>
+          <HomeButton />
           <HeaderNav userName={userName} role={role} />
         </div>
       </header>

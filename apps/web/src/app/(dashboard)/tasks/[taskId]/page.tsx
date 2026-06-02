@@ -80,7 +80,7 @@ export default async function TaskDetailPage({
     <div className="max-w-2xl">
       {/* ページヘッダー */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">タスク詳細</h2>
+        <h2 className="text-2xl font-bold text-black">タスク詳細</h2>
         <Link
           href="/tasks"
           className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"

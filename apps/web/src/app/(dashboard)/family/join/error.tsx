@@ -17,7 +17,7 @@ export default function JoinError({ error, reset }: ErrorProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">グループに参加する</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">グループに参加する</h2>
       <div className="bg-red-50 rounded-xl border border-red-200 p-6 max-w-md">
         <p className="text-red-700 font-medium mb-2">エラーが発生しました</p>
         <p className="text-sm text-red-600 mb-4">

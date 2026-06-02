@@ -66,7 +66,7 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
     const isNotFound = err instanceof ApiError && err.status === 404;
     return (
       <div>
-        <h2 className="text-2xl font-bold mb-6">グループに参加する</h2>
+        <h2 className="text-2xl font-bold text-black mb-6">グループに参加する</h2>
         <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
           <p className="text-red-600 font-medium mb-2">招待コードが無効です</p>
           <p className="text-sm text-gray-500">
@@ -81,7 +81,7 @@ export default async function JoinPage({ searchParams }: JoinPageProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">グループに参加する</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">グループに参加する</h2>
 
       <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
         <p className="text-sm text-gray-500 mb-4">

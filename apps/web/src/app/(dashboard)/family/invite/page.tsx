@@ -84,7 +84,7 @@ export default async function InvitePage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">メンバー招待</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">メンバー招待</h2>
 
       <div className="bg-white rounded-xl shadow-sm border p-6 max-w-sm">
         <div className="flex flex-col items-center gap-4">
