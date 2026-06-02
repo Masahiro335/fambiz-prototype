@@ -70,7 +70,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-2xl">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">メニュー</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">メニュー</h2>
       <div className="space-y-4">
         {sections.map((section) => (
           <div key={section.title} className="bg-white rounded-xl border p-5 shadow-sm">

@@ -16,7 +16,7 @@ export default function RewardsError({ error, reset }: ErrorProps) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">報酬管理</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">報酬管理</h2>
       <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
         <p className="text-red-600 font-medium mb-2">エラーが発生しました</p>
         <p className="text-sm text-gray-500 mb-4">

@@ -62,7 +62,7 @@ export default async function MemberDetailPage({ params }: MemberDetailPageProps
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">メンバー詳細</h2>
+      <h2 className="text-2xl font-bold text-black mb-6">メンバー詳細</h2>
 
       <div className="bg-white rounded-xl shadow-sm border p-6 max-w-md">
         {/* アバター */}

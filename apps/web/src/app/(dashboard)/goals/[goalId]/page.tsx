@@ -99,7 +99,7 @@ export default async function GoalDetailPage({
     <div className="max-w-2xl">
       {/* ページヘッダー */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">目標詳細</h2>
+        <h2 className="text-2xl font-bold text-black">目標詳細</h2>
         <Link
           href="/goals"
           className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
