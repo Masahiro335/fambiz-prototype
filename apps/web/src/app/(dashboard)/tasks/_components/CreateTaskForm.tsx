@@ -19,8 +19,6 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
   const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [hasDueDate, setHasDueDate] = useState(false);
-  const [dueDate, setDueDate] = useState('');
   const [rewardAmount, setRewardAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
@@ -75,7 +73,6 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         rewardAmount: rewardNum,
         ...(startTimeIso ? { startTime: startTimeIso } : {}),
         ...(endTimeIso ? { endTime: endTimeIso } : {}),
-        ...(hasDueDate && dueDate ? { dueDate: dueDate } : {}),
         ...(memo.trim() ? { memo: memo.trim() } : {}),
       };
 
@@ -196,33 +193,6 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
               className="w-32 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-        </div>
-
-        {/* 期日 */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              id="hasDueDate"
-              type="checkbox"
-              checked={hasDueDate}
-              onChange={(e) => {
-                setHasDueDate(e.target.checked);
-                if (!e.target.checked) setDueDate('');
-              }}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="hasDueDate" className="text-sm font-medium text-gray-700">
-              期日を設定する
-            </label>
-          </div>
-          {hasDueDate && (
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          )}
         </div>
 
         {/* 報酬 */}
