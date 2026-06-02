@@ -12,13 +12,16 @@ type Category = (typeof CATEGORIES)[number];
 export function CreateTaskForm({ groupId }: { groupId: string }) {
   const router = useRouter();
 
+  // JSTで今日の日付をYYYY-MM-DD形式で取得する
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+
   // フォームフィールドの状態
   const [taskName, setTaskName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startDate, setStartDate] = useState(today);
+  const [startTime, setStartTime] = useState('00:00');
+  const [endDate, setEndDate] = useState(today);
+  const [endTime, setEndTime] = useState('23:59');
   const [rewardAmount, setRewardAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
@@ -35,6 +38,18 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
     // バリデーション: タスク名は必須
     if (!taskName.trim()) {
       setErrorMessage('タスク名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 開始日時は必須
+    if (!startDate || !startTime) {
+      setErrorMessage('開始日時を入力してください。');
+      return;
+    }
+
+    // バリデーション: 終了日時は必須
+    if (!endDate || !endTime) {
+      setErrorMessage('終了日時を入力してください。');
       return;
     }
 
@@ -59,11 +74,9 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         return;
       }
 
-      // 開始日時・終了日時をISO 8601形式に変換する（入力がある場合のみ）
-      const startTimeIso =
-        startDate && startTime ? new Date(`${startDate}T${startTime}:00`).toISOString() : undefined;
-      const endTimeIso =
-        endDate && endTime ? new Date(`${endDate}T${endTime}:00`).toISOString() : undefined;
+      // 開始日時・終了日時をISO 8601形式に変換する（必須項目）
+      const startTimeIso = new Date(`${startDate}T${startTime}:00`).toISOString();
+      const endTimeIso = new Date(`${endDate}T${endTime}:00`).toISOString();
 
       // リクエストボディを組み立てる（DTOはcamelCase）
       const requestBody = {
@@ -71,8 +84,8 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         taskName: taskName.trim(),
         ...(category ? { category } : {}),
         rewardAmount: rewardNum,
-        ...(startTimeIso ? { startTime: startTimeIso } : {}),
-        ...(endTimeIso ? { endTime: endTimeIso } : {}),
+        startTime: startTimeIso,
+        endTime: endTimeIso,
         ...(memo.trim() ? { memo: memo.trim() } : {}),
       };
 
@@ -159,7 +172,7 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
 
         {/* 開始日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"
@@ -181,7 +194,7 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
 
         {/* 終了日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"

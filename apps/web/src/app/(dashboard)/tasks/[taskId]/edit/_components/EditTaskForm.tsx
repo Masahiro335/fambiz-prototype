@@ -29,13 +29,16 @@ function extractTime(isoString: string | null): string {
 export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupId: string }) {
   const router = useRouter();
 
-  // タスクの現在値でフォームを初期化する
+  // JSTで今日の日付をYYYY-MM-DD形式で取得する
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+
+  // タスクの現在値でフォームを初期化する。未設定の場合は今日の日付・デフォルト時刻を使用する
   const [taskName, setTaskName] = useState(task.task_name);
   const [category, setCategory] = useState<Category | ''>((task.category as Category) ?? '');
-  const [startDate, setStartDate] = useState(extractDate(task.start_time));
-  const [startTime, setStartTime] = useState(extractTime(task.start_time));
-  const [endDate, setEndDate] = useState(extractDate(task.end_time));
-  const [endTime, setEndTime] = useState(extractTime(task.end_time));
+  const [startDate, setStartDate] = useState(extractDate(task.start_time) || today);
+  const [startTime, setStartTime] = useState(extractTime(task.start_time) || '00:00');
+  const [endDate, setEndDate] = useState(extractDate(task.end_time) || today);
+  const [endTime, setEndTime] = useState(extractTime(task.end_time) || '23:59');
   const [rewardAmount, setRewardAmount] = useState(String(task.reward_amount));
   const [memo, setMemo] = useState(task.memo ?? '');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
@@ -53,6 +56,18 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
     // バリデーション: タスク名は必須
     if (!taskName.trim()) {
       setErrorMessage('タスク名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 開始日時は必須
+    if (!startDate || !startTime) {
+      setErrorMessage('開始日時を入力してください。');
+      return;
+    }
+
+    // バリデーション: 終了日時は必須
+    if (!endDate || !endTime) {
+      setErrorMessage('終了日時を入力してください。');
       return;
     }
 
@@ -77,19 +92,17 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
         return;
       }
 
-      // 開始日時・終了日時をISO 8601形式に変換する（入力がある場合のみ）
-      const startTimeIso =
-        startDate && startTime ? new Date(`${startDate}T${startTime}:00`).toISOString() : undefined;
-      const endTimeIso =
-        endDate && endTime ? new Date(`${endDate}T${endTime}:00`).toISOString() : undefined;
+      // 開始日時・終了日時をISO 8601形式に変換する（必須項目）
+      const startTimeIso = new Date(`${startDate}T${startTime}:00`).toISOString();
+      const endTimeIso = new Date(`${endDate}T${endTime}:00`).toISOString();
 
       // リクエストボディを組み立てる（DTOはcamelCase）
       const requestBody = {
         taskName: taskName.trim(),
         ...(category ? { category } : {}),
         rewardAmount: rewardNum,
-        ...(startTimeIso ? { startTime: startTimeIso } : {}),
-        ...(endTimeIso ? { endTime: endTimeIso } : {}),
+        startTime: startTimeIso,
+        endTime: endTimeIso,
         ...(memo.trim() ? { memo: memo.trim() } : {}),
       };
 
@@ -257,7 +270,7 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
 
         {/* 開始日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"
@@ -279,7 +292,7 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
 
         {/* 終了日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"
