@@ -14,14 +14,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login');
   }
 
-  // JWTからユーザー名を取得する
+  // JWTからユーザー名とロールを取得する
   let userName = '';
+  let role: 'parent' | 'child' = 'child';
   try {
     const payload = JSON.parse(atob(session.access_token.split('.')[1])) as Partial<JwtPayload>;
     userName = payload.name ?? '';
+    role = payload.role ?? 'child';
   } catch {
-    const metadata = session.user.user_metadata as { name?: string };
+    const metadata = session.user.user_metadata as { name?: string; role?: string };
     userName = metadata.name ?? '';
+    role = (metadata.role as 'parent' | 'child') ?? 'child';
   }
 
   return (
@@ -31,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Link href="/" className="text-xl font-bold text-blue-600 shrink-0">
             FamBiz
           </Link>
-          <HeaderNav userName={userName} />
+          <HeaderNav userName={userName} role={role} />
         </div>
       </header>
 
