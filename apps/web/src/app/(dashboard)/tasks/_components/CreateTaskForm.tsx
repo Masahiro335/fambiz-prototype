@@ -164,7 +164,10 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (e.target.value && !startTime) setStartTime('00:00');
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
@@ -183,7 +186,10 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (e.target.value && !endTime) setEndTime('23:59');
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input

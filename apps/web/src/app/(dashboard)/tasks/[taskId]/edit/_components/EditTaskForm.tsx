@@ -21,9 +21,8 @@ function extractDate(isoString: string | null): string {
 function extractTime(isoString: string | null): string {
   if (!isoString) return '';
   const date = new Date(isoString);
-  const hh = date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false });
-  const mm = date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', minute: '2-digit' }).padStart(2, '0');
-  return `${hh}:${mm}`;
+  // sv-SE ロケールは HH:MM 形式（24時間・ゼロ埋め）を保証する
+  return date.toLocaleTimeString('sv-SE', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
 }
 
 // タスク編集フォームコンポーネント（Client Component）
@@ -263,7 +262,10 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (e.target.value && !startTime) setStartTime('00:00');
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
@@ -282,7 +284,10 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (e.target.value && !endTime) setEndTime('23:59');
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
