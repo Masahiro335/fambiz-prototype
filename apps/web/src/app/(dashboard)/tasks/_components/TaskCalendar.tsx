@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Task, TaskStatus } from '@fambiz/types';
 
@@ -29,6 +29,21 @@ const STATUS_CHIP_STYLES: Record<TaskStatus, string> = {
   completed: 'bg-green-100 text-green-600',
   cancelled: 'bg-red-100 text-red-600',
   expired: 'bg-red-100 text-red-600',
+};
+
+const STATUS_LABELS: Record<TaskStatus, string> = {
+  pending: '未対応',
+  reported: '対応済',
+  completed: '完了',
+  cancelled: 'キャンセル',
+  expired: '期限切れ',
+};
+
+const CATEGORY_STYLES: Record<string, string> = {
+  掃除: 'bg-blue-100 text-blue-700',
+  料理: 'bg-red-100 text-red-700',
+  洗濯: 'bg-yellow-100 text-yellow-700',
+  その他: 'bg-green-100 text-green-700',
 };
 
 
@@ -69,6 +84,34 @@ function getCurrentMonthJST(): string {
   return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/** ISO 8601 UTC 文字列を JST の「M/D HH:mm」形式に変換する */
+function isoToJSTDateTime(isoStr: string): string {
+  const d = new Date(isoStr);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const m = jst.getUTCMonth() + 1;
+  const day = jst.getUTCDate();
+  const hh = String(jst.getUTCHours()).padStart(2, '0');
+  const mm = String(jst.getUTCMinutes()).padStart(2, '0');
+  return `${m}/${day} ${hh}:${mm}`;
+}
+
+/** start_time・end_time を「M/D HH:mm 〜 M/D HH:mm」形式で返す */
+function formatDateRange(startTime: string | null, endTime: string | null): string {
+  if (!startTime && !endTime) return '—';
+  const s = startTime ? isoToJSTDateTime(startTime) : '';
+  const e = endTime ? isoToJSTDateTime(endTime) : '';
+  if (s && e) return `${s} 〜 ${e}`;
+  if (s) return `${s} 〜`;
+  return `〜 ${e}`;
+}
+
+/** 選択日を「YYYY年M月D日（曜）」形式にフォーマットする */
+function formatSelectedDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const weekday = WEEKDAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${y}年${m}月${d}日（${weekday}）`;
+}
+
 function getPrevMonth(year: number, mon: number): string {
   const d = new Date(year, mon - 2, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -83,6 +126,11 @@ function getNextMonth(year: number, mon: number): string {
 function isMultiDay(task: Task): boolean {
   if (!task.start_time || !task.end_time) return false;
   return isoToJSTDate(task.start_time) !== isoToJSTDate(task.end_time);
+}
+
+/** タスクのソートキーを返す（start_time 昇順。未設定は先頭）*/
+function getTaskSortKey(task: Task): string {
+  return task.start_time ?? '';
 }
 
 /** 単日タスクの表示位置となる JST 日付を返す（due_date 優先、次に start_time）*/
@@ -214,6 +262,13 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
     new Set<TaskStatus>(['pending', 'reported', 'completed', 'cancelled', 'expired']),
   );
 
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // 月が変わったら選択日をリセットする
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [month]);
+
   const [year, mon] = month.split('-').map(Number);
   const todayKey = getTodayJST();
   const currentMonth = getCurrentMonthJST();
@@ -242,20 +297,39 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
     [filteredTasks.map((t) => t.id + t.status).join(',')],
   );
 
-  // 単日タスクを日付ごとにグループ化する
+  // 単日タスクを日付ごとにグループ化し、各日付内で開始時間の早い順にソートする
   const tasksByDate = useMemo(() => {
-    return singleDayTasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const grouped = singleDayTasks.reduce<Record<string, Task[]>>((acc, task) => {
       const key = getSingleDayDate(task);
       if (!key) return acc;
       if (!acc[key]) acc[key] = [];
       acc[key].push(task);
       return acc;
     }, {});
+    for (const key of Object.keys(grouped)) {
+      grouped[key].sort((a, b) => getTaskSortKey(a).localeCompare(getTaskSortKey(b)));
+    }
+    return grouped;
   }, [singleDayTasks]);
 
   const weeks = useMemo(() => buildWeekRows(year, mon), [year, mon]);
 
   const currentMonthPrefix = `${year}-${String(mon).padStart(2, '0')}`;
+
+  // 選択日に表示するタスク（単日 + 複数日）をフィルタする
+  const tasksForSelectedDate = useMemo(() => {
+    if (!selectedDate) return [];
+    const single = singleDayTasks.filter((t) => getSingleDayDate(t) === selectedDate);
+    const multi = multiDayTasks.filter((t) => {
+      const s = isoToJSTDate(t.start_time!);
+      const e = isoToJSTDate(t.end_time!);
+      return s <= selectedDate && e >= selectedDate;
+    });
+    return [...single, ...multi].sort((a, b) =>
+      getTaskSortKey(a).localeCompare(getTaskSortKey(b)),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, singleDayTasks.map((t) => t.id).join(','), multiDayTasks.map((t) => t.id).join(',')]);
 
   return (
     <div className="space-y-4">
@@ -393,10 +467,21 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
                           ? 'text-gray-700'
                           : 'text-gray-300';
 
+                  const isSelected = dateStr === selectedDate;
+
                   return (
                     <div
                       key={dateStr}
-                      className={`min-h-[90px] p-1 ${!isLastCol ? 'border-r' : ''} ${isToday ? 'bg-blue-50' : !isInMonth ? 'bg-gray-50' : ''}`}
+                      onClick={() => setSelectedDate((prev) => (prev === dateStr ? null : dateStr))}
+                      className={`min-h-[90px] p-1 cursor-pointer transition-colors ${!isLastCol ? 'border-r' : ''} ${
+                        isSelected
+                          ? 'ring-2 ring-inset ring-blue-400 bg-blue-50'
+                          : isToday
+                            ? 'bg-blue-50 hover:bg-blue-100'
+                            : !isInMonth
+                              ? 'bg-gray-50 hover:bg-gray-100'
+                              : 'hover:bg-gray-50'
+                      }`}
                     >
                       {/* 日付番号 */}
                       <div className="mb-1">
@@ -410,7 +495,7 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
                         {displayTasks.map((task) => (
                           <button
                             key={task.id}
-                            onClick={() => router.push(`/tasks/${task.id}`)}
+                            onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${task.id}`); }}
                             title={task.task_name}
                             className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate block transition-opacity hover:opacity-75 ${getChipStyle(task)}`}
                           >
@@ -430,6 +515,58 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
           );
         })}
       </div>
+
+      {/* 選択日タスク一覧パネル */}
+      {selectedDate && (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-700">
+              {formatSelectedDate(selectedDate)}のタスク
+            </h3>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="text-gray-400 hover:text-gray-600 transition-colors text-lg leading-none"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+          </div>
+          {tasksForSelectedDate.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">この日のタスクはありません</p>
+          ) : (
+            <ul className="divide-y">
+              {tasksForSelectedDate.map((task) => (
+                <li key={task.id}>
+                  <button
+                    onClick={() => router.push(`/tasks/${task.id}`)}
+                    className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-800 truncate">
+                        {task.task_name}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {formatDateRange(task.start_time, task.end_time)}
+                      </div>
+                    </div>
+                    {task.category && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${CATEGORY_STYLES[task.category] ?? 'bg-green-100 text-green-700'}`}>
+                        {task.category}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_CHIP_STYLES[task.status]}`}>
+                      {STATUS_LABELS[task.status]}
+                    </span>
+                    <span className="text-sm text-gray-600 shrink-0">
+                      ¥{task.reward_amount.toLocaleString()}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* 空状態メッセージ */}
       {tasks.length === 0 ? (
