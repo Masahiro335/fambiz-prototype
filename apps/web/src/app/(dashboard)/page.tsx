@@ -37,6 +37,7 @@ export default async function DashboardPage() {
       title: 'タスク',
       buttons: [
         { label: 'タスク一覧', href: '/tasks' },
+        { label: 'タスク検索', href: '/tasks/search' },
         ...(isParent ? [{ label: 'タスク新規登録', href: '/tasks/new' }] : []),
       ],
     },
