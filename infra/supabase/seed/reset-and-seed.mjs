@@ -7,7 +7,8 @@
  *
  * データ構成（基準日: 2026-06-01 JST）:
  *   2026-05（先月）: タスク5件完了 + 目標達成 → task=600円 + bonus=300円 = 900円（支払済）
- *   2026-06（今月）: タスク5件（completed/reported/pending/cancelled）+ 目標3件 → 100円（集計中）
+ *   2026-06（今月）: タスク10件（completed×6/reported/pending×2/cancelled）+ 目標3件 → task=730円（集計中）
+ *   2026-07（来月）: タスク9件（completed×6/reported/pending/cancelled）+ 目標1件 → task=700円（集計前）
  *   2026-01〜04:    過去報酬レコード（グラフ表示用）
  */
 
@@ -145,6 +146,39 @@ await run('タスク（2026-06）を挿入', () => insert('tasks', [
     status: 'cancelled', due_date: null,
     memo: '梅雨明け後に再設定予定',
   },
+  // completed ×5（追加）
+  {
+    id: '00000000-0000-0000-0000-000000000090',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '風呂掃除', category: '掃除', reward_amount: 120,
+    status: 'completed', due_date: '2026-06-04T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000091',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '窓拭き', category: '掃除', reward_amount: 180,
+    status: 'completed', due_date: '2026-06-08T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000092',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: 'お使い', category: '買い物', reward_amount: 100,
+    status: 'completed', due_date: '2026-06-12T15:00:00Z',
+    memo: '牛乳とパンを買う',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000093',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '草取り', category: '庭仕事', reward_amount: 150,
+    status: 'completed', due_date: '2026-06-15T15:00:00Z',
+    memo: '梅雨入り前に',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000094',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '洗濯干し', category: '洗濯', reward_amount: 80,
+    status: 'completed', due_date: '2026-06-18T15:00:00Z',
+  },
 ]));
 
 // ============================================================
@@ -222,6 +256,182 @@ await run('task_completions（2026-06）を挿入', () => insert('task_completio
     reported_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     confirmed_reward: 0,
   },
+  // 追加完了記録 ×5（confirmed_reward 合計: 120+180+100+150+80 = 630）
+  {
+    id: '00000000-0000-0000-0000-000000000095',
+    task_id: '00000000-0000-0000-0000-000000000090',
+    child_id: CHILD_ID,
+    reported_at: '2026-06-04T01:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-06-04T03:00:00Z',
+    confirmed_reward: 120,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000096',
+    task_id: '00000000-0000-0000-0000-000000000091',
+    child_id: CHILD_ID,
+    reported_at: '2026-06-08T04:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-06-08T06:00:00Z',
+    confirmed_reward: 180,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000097',
+    task_id: '00000000-0000-0000-0000-000000000092',
+    child_id: CHILD_ID,
+    reported_at: '2026-06-12T07:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-06-12T09:00:00Z',
+    confirmed_reward: 100,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000098',
+    task_id: '00000000-0000-0000-0000-000000000093',
+    child_id: CHILD_ID,
+    reported_at: '2026-06-15T02:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-06-15T04:00:00Z',
+    confirmed_reward: 150,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000099',
+    task_id: '00000000-0000-0000-0000-000000000094',
+    child_id: CHILD_ID,
+    reported_at: '2026-06-18T00:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-06-18T02:00:00Z',
+    confirmed_reward: 80,
+  },
+]));
+
+// ============================================================
+// 4b. タスク（来月 2026-07）
+// ============================================================
+
+await run('タスク（2026-07）を挿入', () => insert('tasks', [
+  {
+    id: '00000000-0000-0000-0000-000000000070',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: 'ゴミ出し', category: '掃除', reward_amount: 50,
+    status: 'completed', due_date: '2026-07-03T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000071',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '皿洗い', category: '料理', reward_amount: 80,
+    status: 'completed', due_date: '2026-07-05T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000072',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '部屋の掃除', category: '掃除', reward_amount: 200,
+    status: 'completed', due_date: '2026-07-10T15:00:00Z',
+    memo: '丁寧にやること',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000073',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '洗濯物を畳む', category: '洗濯', reward_amount: 150,
+    status: 'completed', due_date: '2026-07-12T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000074',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '風呂掃除', category: '掃除', reward_amount: 120,
+    status: 'completed', due_date: '2026-07-15T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000075',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: 'お使い', category: '買い物', reward_amount: 100,
+    status: 'completed', due_date: '2026-07-18T15:00:00Z',
+    memo: '牛乳とパンを買う',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000076',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '庭の草むしり', category: '庭仕事', reward_amount: 300,
+    status: 'reported', due_date: '2026-07-20T15:00:00Z',
+    memo: '夏なので早めに',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000077',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '窓拭き', category: '掃除', reward_amount: 180,
+    status: 'pending', due_date: '2026-07-25T15:00:00Z',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000078',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    task_name: '車の洗車', category: 'その他', reward_amount: 250,
+    status: 'cancelled', due_date: null,
+    memo: '雨天のため中止',
+  },
+]));
+
+await run('task_completions（2026-07）を挿入', () => insert('task_completions', [
+  {
+    id: '00000000-0000-0000-0000-000000000080',
+    task_id: '00000000-0000-0000-0000-000000000070',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-03T01:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-03T03:00:00Z',
+    confirmed_reward: 50,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000081',
+    task_id: '00000000-0000-0000-0000-000000000071',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-05T09:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-05T11:00:00Z',
+    confirmed_reward: 80,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000082',
+    task_id: '00000000-0000-0000-0000-000000000072',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-10T04:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-10T06:00:00Z',
+    confirmed_reward: 200,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000083',
+    task_id: '00000000-0000-0000-0000-000000000073',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-12T01:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-12T03:00:00Z',
+    confirmed_reward: 150,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000084',
+    task_id: '00000000-0000-0000-0000-000000000074',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-15T08:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-15T10:00:00Z',
+    confirmed_reward: 120,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000085',
+    task_id: '00000000-0000-0000-0000-000000000075',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-18T06:00:00Z',
+    approved_by: PARENT_ID,
+    approved_at: '2026-07-18T08:00:00Z',
+    confirmed_reward: 100,
+  },
+  {
+    // 庭の草むしり: 報告済み・承認待ち
+    id: '00000000-0000-0000-0000-000000000086',
+    task_id: '00000000-0000-0000-0000-000000000076',
+    child_id: CHILD_ID,
+    reported_at: '2026-07-20T09:00:00Z',
+    confirmed_reward: 0,
+  },
 ]));
 
 // ============================================================
@@ -267,6 +477,15 @@ await run('goals を挿入', () => insert('goals', [
     goal_reward: 200, target_count: 10,
     and_condition_flag: false,
     status: 'pending_approval', target_month: '2026-06',
+  },
+  {
+    // 来月（2026-07）: 挑戦中
+    id: '00000000-0000-0000-0000-000000000054',
+    group_id: GROUP_ID, creator_id: PARENT_ID, assignee_id: CHILD_ID,
+    goal_name: '掃除を月10回する',
+    goal_reward: 400, target_count: 10,
+    and_condition_flag: false,
+    status: 'in_progress', target_month: '2026-07',
   },
 ]));
 
@@ -321,8 +540,15 @@ await run('rewards を挿入', () => insert('rewards', [
   {
     id: '00000000-0000-0000-0000-000000000060',
     group_id: GROUP_ID, child_id: CHILD_ID, target_month: '2026-06',
-    // 100: ゴミ出し confirmed_reward（API アクセス時に動的再計算で上書きされる）
-    task_reward_total: 100, bonus_reward_total: 0, total_amount: 100,
+    // 100+120+180+100+150+80 = 730
+    task_reward_total: 730, bonus_reward_total: 0, total_amount: 730,
+    status: 'pending', paid_at: null,
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000067',
+    group_id: GROUP_ID, child_id: CHILD_ID, target_month: '2026-07',
+    // 50+80+200+150+120+100 = 700
+    task_reward_total: 700, bonus_reward_total: 0, total_amount: 700,
     status: 'pending', paid_at: null,
   },
 ]));
