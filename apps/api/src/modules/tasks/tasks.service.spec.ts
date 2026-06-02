@@ -542,6 +542,19 @@ describe('TasksService', () => {
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
     });
 
+    it('当月の報酬が paid 済みの場合、承認（reported → completed）で BadRequestException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTask);
+      mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
+
+      await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
     it('当月の報酬が paid 済みの場合、即時完了で BadRequestException をスローすること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
       mockTasksRepository.findById.mockResolvedValue(pendingTask);

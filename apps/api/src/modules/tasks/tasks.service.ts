@@ -226,7 +226,22 @@ export class TasksService {
       // 実行報告: task_completions にレコードを作成する
       await this.tasksRepository.createTaskCompletion(taskId, user.sub, currentTask.reward_amount);
     } else if (from === 'reported' && to === 'completed') {
-      // 承認: task_completions の該当レコードに承認情報を設定する
+      // 承認: 当月の報酬が paid 済みの場合は承認を拒否する
+      // paid 後に承認した task_completions は集計対象外になるため
+      if (currentTask.assignee_id) {
+        const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const targetMonth = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}`;
+        const existingReward = await this.rewardsRepository.findByChildAndMonth(
+          currentTask.assignee_id,
+          targetMonth,
+        );
+        if (existingReward?.status === 'paid') {
+          throw new BadRequestException(
+            `${targetMonth} の報酬は支払い済みのため、承認はできません。来月以降に実施してください`,
+          );
+        }
+      }
+      // task_completions の該当レコードに承認情報を設定する
       await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
     } else if (from === 'reported' && to === 'pending') {
       // 差し戻し: task_completions の該当レコードをソフトデリートする
