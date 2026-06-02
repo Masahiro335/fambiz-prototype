@@ -33,6 +33,7 @@ flowchart TD
 
     TOP --> T1([タスク一覧\nSCR-TASK-001])
     TOP --> T2([タスク新規登録\nSCR-TASK-003])
+    TOP --> TS([タスク検索\nSCR-TASK-005])
     TOP --> G1([目標一覧\nSCR-GOAL-001])
     TOP --> G2([目標新規登録\nSCR-GOAL-003])
     TOP --> R1([報酬管理\nSCR-REWARD-001])
