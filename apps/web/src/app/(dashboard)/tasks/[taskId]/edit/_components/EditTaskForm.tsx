@@ -26,7 +26,7 @@ function extractTime(isoString: string | null): string {
 }
 
 // タスク編集フォームコンポーネント（Client Component）
-export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupId: string }) {
+export function EditTaskForm({ task, familyGroupId, paidMonths }: { task: Task; familyGroupId: string; paidMonths: string[] }) {
   const router = useRouter();
 
   // JSTで今日の日付をYYYY-MM-DD形式で取得する
@@ -42,6 +42,9 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
   const [rewardAmount, setRewardAmount] = useState(String(task.reward_amount));
   const [memo, setMemo] = useState(task.memo ?? '');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
+
+  // 選択中の開始月が支払い済みかどうか（YYYY-MM で比較する）
+  const isPaidMonth = paidMonths.includes(startDate.substring(0, 7));
 
   // UI状態
   const [isLoading, setIsLoading] = useState(false);
@@ -278,6 +281,7 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
               onChange={(e) => {
                 setStartDate(e.target.value);
                 if (e.target.value && !startTime) setStartTime('00:00');
+                if (paidMonths.includes(e.target.value.substring(0, 7))) setIsImmediateComplete(false);
               }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -349,8 +353,8 @@ export function EditTaskForm({ task, familyGroupId }: { task: Task; familyGroupI
           />
         </div>
 
-        {/* 既に完了にする（pending / reported のタスクにのみ表示） */}
-        {(task.status === 'pending' || task.status === 'reported') && (
+        {/* 既に完了にする（pending / reported かつ支払い済み月以外のタスクにのみ表示） */}
+        {(task.status === 'pending' || task.status === 'reported') && !isPaidMonth && (
           <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
             <input
               id="isImmediateComplete"

@@ -8,11 +8,12 @@ import type { Task, TaskStatus } from '@fambiz/types';
 interface TaskStatusActionsProps {
   task: Task;
   role: string | null;
+  isPaidMonth: boolean;
 }
 
 // タスクステータス変更アクションコンポーネント（Client Component）
 // ロールとステータスに応じてアクションボタンを表示する
-export function TaskStatusActions({ task, role }: TaskStatusActionsProps) {
+export function TaskStatusActions({ task, role, isPaidMonth }: TaskStatusActionsProps) {
   const router = useRouter();
 
   // 差し戻しコメント入力の表示フラグ
@@ -132,14 +133,21 @@ export function TaskStatusActions({ task, role }: TaskStatusActionsProps) {
         <div className="flex flex-col gap-3">
           {/* pending の場合のみ「対応済にする」ボタンを表示 */}
           {isPending && (
-            <button
-              type="button"
-              onClick={handleReport}
-              disabled={isLoading}
-              className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? '更新中...' : '対応済にする'}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleReport}
+                disabled={isLoading || isPaidMonth}
+                className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? '更新中...' : '対応済にする'}
+              </button>
+              {isPaidMonth && (
+                <p className="text-xs text-gray-500 text-center">
+                  このタスクの月はすでに支払い済みのため操作できません
+                </p>
+              )}
+            </>
           )}
 
           {/* pending または reported の場合「取り下げる」ボタンを表示 */}
@@ -163,11 +171,16 @@ export function TaskStatusActions({ task, role }: TaskStatusActionsProps) {
           <button
             type="button"
             onClick={handleApprove}
-            disabled={isLoading}
+            disabled={isLoading || isPaidMonth}
             className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? '更新中...' : '承認する'}
           </button>
+          {isPaidMonth && (
+            <p className="text-xs text-gray-500 text-center">
+              このタスクの月はすでに支払い済みのため承認できません
+            </p>
+          )}
 
           {/* 差し戻しコメント入力エリア（「差し戻す」ボタン押下後に表示） */}
           {showRejectComment ? (

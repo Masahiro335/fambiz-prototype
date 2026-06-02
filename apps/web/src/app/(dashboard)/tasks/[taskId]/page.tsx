@@ -3,7 +3,45 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { TaskStatusActions } from './_components/TaskStatusActions';
-import type { Task, TaskStatus, JwtPayload } from '@fambiz/types';
+import type { Task, TaskStatus, JwtPayload, GroupMember, Reward } from '@fambiz/types';
+
+// グループの過去12か月分の支払い済み月一覧を取得する
+async function getPaidMonths(familyGroupId: string): Promise<string[]> {
+  const now = new Date();
+  const recentMonths: string[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    recentMonths.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+    );
+  }
+
+  try {
+    const allMembers = await apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`);
+    const childMembers = allMembers.filter((m) => m.user?.role === 'child');
+    if (childMembers.length === 0) return [];
+
+    const results = await Promise.allSettled(
+      childMembers.flatMap((child) =>
+        recentMonths.map((month) =>
+          apiFetch<Reward>(
+            `/v1/rewards?groupId=${familyGroupId}&childId=${child.user_id}&targetMonth=${month}`,
+          ),
+        ),
+      ),
+    );
+
+    const paidSet = new Set<string>();
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value?.status === 'paid') {
+        paidSet.add(result.value.target_month);
+      }
+    });
+    return Array.from(paidSet);
+  } catch {
+    return [];
+  }
+}
 
 // ステータスのラベルとカラークラスを定義する
 const statusConfig: Record<TaskStatus, { label: string; className: string }> = {
@@ -49,16 +87,19 @@ export default async function TaskDetailPage({
 
   // JWTペイロードからロールと家族グループIDを取得する
   let role: string | null = null;
+  let familyGroupId: string | null = null;
 
   try {
     const payload = JSON.parse(
       atob(session.access_token.split('.')[1]),
     ) as Partial<JwtPayload>;
     role = payload.role ?? null;
+    familyGroupId = payload.family_group_id ?? null;
   } catch {
     // JWTのパースに失敗した場合はuser_metadataからフォールバックする
-    const metadata = session.user.user_metadata as { role?: string };
+    const metadata = session.user.user_metadata as { role?: string; family_group_id?: string };
     role = metadata.role ?? null;
+    familyGroupId = metadata.family_group_id ?? null;
   }
 
   // タスク詳細を取得する
@@ -75,6 +116,13 @@ export default async function TaskDetailPage({
   }
 
   const status = statusConfig[task.status] ?? { label: task.status, className: 'bg-gray-100 text-gray-600' };
+
+  // タスクの開始月が支払い済みかどうかを判定する
+  const paidMonths = familyGroupId ? await getPaidMonths(familyGroupId) : [];
+  const taskMonth = task.start_time
+    ? new Date(task.start_time).toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }).substring(0, 7)
+    : null;
+  const isPaidMonth = taskMonth ? paidMonths.includes(taskMonth) : false;
 
   return (
     <div className="max-w-2xl">
@@ -240,7 +288,7 @@ export default async function TaskDetailPage({
       </div>
 
       {/* ステータス変更アクションボタン（Client Component） */}
-      <TaskStatusActions task={task} role={role} />
+      <TaskStatusActions task={task} role={role} isPaidMonth={isPaidMonth} />
     </div>
   );
 }

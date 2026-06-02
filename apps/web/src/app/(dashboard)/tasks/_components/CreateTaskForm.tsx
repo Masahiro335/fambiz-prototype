@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import type { Task } from '@fambiz/types';
 
 // 分類の選択肢
 const CATEGORIES = ['掃除', '料理', '洗濯', 'その他'] as const;
 type Category = (typeof CATEGORIES)[number];
 
 // タスク登録フォームコンポーネント（Client Component）
-export function CreateTaskForm({ groupId }: { groupId: string }) {
+export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidMonths: string[] }) {
   const router = useRouter();
 
   // JSTで今日の日付をYYYY-MM-DD形式で取得する
@@ -25,6 +26,9 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
   const [rewardAmount, setRewardAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
+
+  // 選択中の開始月が支払い済みかどうか（YYYY-MM で比較する）
+  const isPaidMonth = paidMonths.includes(startDate.substring(0, 7));
 
   // UI状態
   const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +115,34 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         return;
       }
 
+      // 「既に完了にする」チェック時はステータスを完了に変更する
+      if (isImmediateComplete) {
+        const createdTask = (await res.json()) as Task;
+        const statusRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/v1/tasks/${createdTask.id}/status`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ status: 'completed' }),
+          },
+        );
+
+        if (!statusRes.ok) {
+          const errorBody = (await statusRes.json()) as { message?: string | string[] };
+          const message: string =
+            typeof errorBody.message === 'string'
+              ? errorBody.message
+              : Array.isArray(errorBody.message)
+                ? errorBody.message.join(' ')
+                : 'ステータスの更新に失敗しました。';
+          setErrorMessage(message);
+          return;
+        }
+      }
+
       // 登録成功後はタスク一覧へ遷移する
       router.push('/tasks');
       router.refresh();
@@ -180,6 +212,7 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
               onChange={(e) => {
                 setStartDate(e.target.value);
                 if (e.target.value && !startTime) setStartTime('00:00');
+                if (paidMonths.includes(e.target.value.substring(0, 7))) setIsImmediateComplete(false);
               }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -251,19 +284,21 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
           />
         </div>
 
-        {/* 即完了フラグ（UIのみ、現段階ではAPIへの送信は不要） */}
-        <div className="flex items-center gap-2">
-          <input
-            id="isImmediateComplete"
-            type="checkbox"
-            checked={isImmediateComplete}
-            onChange={(e) => setIsImmediateComplete(e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="isImmediateComplete" className="text-sm font-medium text-gray-700">
-            即に完了にする
-          </label>
-        </div>
+        {/* 既に完了にする（支払い済み月は非表示） */}
+        {!isPaidMonth && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <input
+              id="isImmediateComplete"
+              type="checkbox"
+              checked={isImmediateComplete}
+              onChange={(e) => setIsImmediateComplete(e.target.checked)}
+              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+            />
+            <label htmlFor="isImmediateComplete" className="text-sm font-medium text-green-700 cursor-pointer">
+              既に完了にする
+            </label>
+          </div>
+        )}
 
         {/* ボタン群 */}
         <div className="flex gap-3 pt-2">
