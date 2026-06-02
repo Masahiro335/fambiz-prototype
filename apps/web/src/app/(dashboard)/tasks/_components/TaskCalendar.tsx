@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Task, TaskStatus } from '@fambiz/types';
 
@@ -262,10 +262,19 @@ export function TaskCalendar({ tasks, month, role }: TaskCalendarProps) {
     new Set<TaskStatus>(['pending', 'reported', 'completed', 'cancelled', 'expired']),
   );
 
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // 初回表示時は本日（当月表示時のみ）をデフォルト選択する
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => {
+    const today = getTodayJST();
+    return today.startsWith(month) ? today : null;
+  });
 
-  // 月が変わったら選択日をリセットする
+  // 初回マウントをスキップし、月が変わったときのみ選択日をリセットする
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setSelectedDate(null);
   }, [month]);
 
