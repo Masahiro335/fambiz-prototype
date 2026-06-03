@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { Task, TaskStatus, User, UserRole } from '@fambiz/types';
+import type { Task, TaskCompletion, TaskStatus, User, UserRole } from '@fambiz/types';
 
 /**
  * タスクに含まれるユーザー情報（作成者・担当者）の DTO。
@@ -83,6 +83,13 @@ export class TaskResponseDto implements Task {
 
   @ApiProperty({ description: '更新日時（ISO 8601）' })
   updated_at: string;
+
+  @ApiProperty({
+    description: '最新の実行報告情報（reported / completed 状態時に参照）。存在しない場合は null。',
+    nullable: true,
+    required: false,
+  })
+  latest_completion?: TaskCompletion | null;
 
   @ApiProperty({ description: '作成者ユーザー情報', type: () => UserInTaskDto, required: false })
   creator?: UserInTaskDto;
