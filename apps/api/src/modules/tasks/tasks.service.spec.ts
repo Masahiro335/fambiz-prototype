@@ -22,6 +22,8 @@ const mockTasksRepository = {
   createTaskCompletion: jest.fn(),
   approveTaskCompletion: jest.fn(),
   cancelTaskCompletion: jest.fn(),
+  isMemberOfGroup: jest.fn(),
+  findTaskAssignee: jest.fn(),
 };
 
 // =========================================================================
@@ -127,7 +129,8 @@ describe('TasksService', () => {
     };
 
     it('正常にタスクを作成できること', async () => {
-      // リポジトリがタスクを返すよう設定
+      // assigneeId が指定されているため isMemberOfGroup が呼ばれる → グループ内メンバーとして返す
+      mockTasksRepository.isMemberOfGroup.mockResolvedValue(true);
       mockTasksRepository.createTask.mockResolvedValue(mockTask);
 
       const result = await service.createTask(createTaskDto, parentUser);
@@ -195,10 +198,11 @@ describe('TasksService', () => {
       const result = await service.findAll(groupId, childUser);
 
       expect(result).toEqual(mockTasks);
+      // 子ロールは自分の user.sub で assigneeId が強制フィルタされること
       expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
         groupId,
         status: undefined,
-        assigneeId: undefined,
+        assigneeId: childUser.sub,
         keyword: undefined,
         month: undefined,
         category: undefined,
