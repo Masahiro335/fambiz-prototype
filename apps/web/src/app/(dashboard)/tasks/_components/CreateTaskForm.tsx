@@ -3,27 +3,32 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import type { Task } from '@fambiz/types';
 
 // 分類の選択肢
 const CATEGORIES = ['掃除', '料理', '洗濯', 'その他'] as const;
 type Category = (typeof CATEGORIES)[number];
 
 // タスク登録フォームコンポーネント（Client Component）
-export function CreateTaskForm({ groupId }: { groupId: string }) {
+export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidMonths: string[] }) {
   const router = useRouter();
+
+  // JSTで今日の日付をYYYY-MM-DD形式で取得する
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
 
   // フォームフィールドの状態
   const [taskName, setTaskName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [hasDueDate, setHasDueDate] = useState(false);
-  const [dueDate, setDueDate] = useState('');
+  const [startDate, setStartDate] = useState(today);
+  const [startTime, setStartTime] = useState('00:00');
+  const [endDate, setEndDate] = useState(today);
+  const [endTime, setEndTime] = useState('23:59');
   const [rewardAmount, setRewardAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [isImmediateComplete, setIsImmediateComplete] = useState(false);
+
+  // 選択中の開始月が支払い済みかどうか（YYYY-MM で比較する）
+  const isPaidMonth = paidMonths.includes(startDate.substring(0, 7));
 
   // UI状態
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +42,18 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
     // バリデーション: タスク名は必須
     if (!taskName.trim()) {
       setErrorMessage('タスク名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 開始日時は必須
+    if (!startDate || !startTime) {
+      setErrorMessage('開始日時を入力してください。');
+      return;
+    }
+
+    // バリデーション: 終了日時は必須
+    if (!endDate || !endTime) {
+      setErrorMessage('終了日時を入力してください。');
       return;
     }
 
@@ -61,11 +78,9 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         return;
       }
 
-      // 開始日時・終了日時をISO 8601形式に変換する（入力がある場合のみ）
-      const startTimeIso =
-        startDate && startTime ? new Date(`${startDate}T${startTime}:00`).toISOString() : undefined;
-      const endTimeIso =
-        endDate && endTime ? new Date(`${endDate}T${endTime}:00`).toISOString() : undefined;
+      // 開始日時・終了日時をISO 8601形式に変換する（必須項目）
+      const startTimeIso = new Date(`${startDate}T${startTime}:00`).toISOString();
+      const endTimeIso = new Date(`${endDate}T${endTime}:00`).toISOString();
 
       // リクエストボディを組み立てる（DTOはcamelCase）
       const requestBody = {
@@ -73,9 +88,8 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
         taskName: taskName.trim(),
         ...(category ? { category } : {}),
         rewardAmount: rewardNum,
-        ...(startTimeIso ? { startTime: startTimeIso } : {}),
-        ...(endTimeIso ? { endTime: endTimeIso } : {}),
-        ...(hasDueDate && dueDate ? { dueDate: dueDate } : {}),
+        startTime: startTimeIso,
+        endTime: endTimeIso,
         ...(memo.trim() ? { memo: memo.trim() } : {}),
       };
 
@@ -99,6 +113,34 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
               : 'タスクの登録に失敗しました。';
         setErrorMessage(message);
         return;
+      }
+
+      // 「既に完了にする」チェック時はステータスを完了に変更する
+      if (isImmediateComplete) {
+        const createdTask = (await res.json()) as Task;
+        const statusRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/v1/tasks/${createdTask.id}/status`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ status: 'completed' }),
+          },
+        );
+
+        if (!statusRes.ok) {
+          const errorBody = (await statusRes.json()) as { message?: string | string[] };
+          const message: string =
+            typeof errorBody.message === 'string'
+              ? errorBody.message
+              : Array.isArray(errorBody.message)
+                ? errorBody.message.join(' ')
+                : 'ステータスの更新に失敗しました。';
+          setErrorMessage(message);
+          return;
+        }
       }
 
       // 登録成功後はタスク一覧へ遷移する
@@ -162,12 +204,16 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
 
         {/* 開始日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (e.target.value && !startTime) setStartTime('00:00');
+                if (paidMonths.includes(e.target.value.substring(0, 7))) setIsImmediateComplete(false);
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
@@ -181,12 +227,15 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
 
         {/* 終了日時 */}
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時</p>
+          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時 <span className="text-red-500">*</span></p>
           <div className="flex gap-2">
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (e.target.value && !endTime) setEndTime('23:59');
+              }}
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
@@ -196,33 +245,6 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
               className="w-32 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-        </div>
-
-        {/* 期日 */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              id="hasDueDate"
-              type="checkbox"
-              checked={hasDueDate}
-              onChange={(e) => {
-                setHasDueDate(e.target.checked);
-                if (!e.target.checked) setDueDate('');
-              }}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="hasDueDate" className="text-sm font-medium text-gray-700">
-              期日を設定する
-            </label>
-          </div>
-          {hasDueDate && (
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          )}
         </div>
 
         {/* 報酬 */}
@@ -262,19 +284,21 @@ export function CreateTaskForm({ groupId }: { groupId: string }) {
           />
         </div>
 
-        {/* 即完了フラグ（UIのみ、現段階ではAPIへの送信は不要） */}
-        <div className="flex items-center gap-2">
-          <input
-            id="isImmediateComplete"
-            type="checkbox"
-            checked={isImmediateComplete}
-            onChange={(e) => setIsImmediateComplete(e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="isImmediateComplete" className="text-sm font-medium text-gray-700">
-            即に完了にする
-          </label>
-        </div>
+        {/* 既に完了にする（支払い済み月は非表示） */}
+        {!isPaidMonth && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <input
+              id="isImmediateComplete"
+              type="checkbox"
+              checked={isImmediateComplete}
+              onChange={(e) => setIsImmediateComplete(e.target.checked)}
+              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+            />
+            <label htmlFor="isImmediateComplete" className="text-sm font-medium text-green-700 cursor-pointer">
+              既に完了にする
+            </label>
+          </div>
+        )}
 
         {/* ボタン群 */}
         <div className="flex gap-3 pt-2">

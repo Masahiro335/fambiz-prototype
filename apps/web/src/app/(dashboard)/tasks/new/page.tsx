@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 import { CreateTaskForm } from '../_components/CreateTaskForm';
+import { getPaidMonths } from '../_lib/getPaidMonths';
 import type { JwtPayload } from '@fambiz/types';
 
 // タスク新規登録ページ（Server Component）
@@ -43,10 +44,12 @@ export default async function NewTaskPage() {
     redirect('/tasks');
   }
 
+  const paidMonths = await getPaidMonths(familyGroupId);
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-black mb-6">タスクを登録</h2>
-      <CreateTaskForm groupId={familyGroupId} />
+      <CreateTaskForm groupId={familyGroupId} paidMonths={paidMonths} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { TaskStatusActions } from './_components/TaskStatusActions';
+import { getPaidMonths } from '../_lib/getPaidMonths';
 import type { Task, TaskStatus, JwtPayload } from '@fambiz/types';
 
 // ステータスのラベルとカラークラスを定義する
@@ -49,16 +50,19 @@ export default async function TaskDetailPage({
 
   // JWTペイロードからロールと家族グループIDを取得する
   let role: string | null = null;
+  let familyGroupId: string | null = null;
 
   try {
     const payload = JSON.parse(
       atob(session.access_token.split('.')[1]),
     ) as Partial<JwtPayload>;
     role = payload.role ?? null;
+    familyGroupId = payload.family_group_id ?? null;
   } catch {
     // JWTのパースに失敗した場合はuser_metadataからフォールバックする
-    const metadata = session.user.user_metadata as { role?: string };
+    const metadata = session.user.user_metadata as { role?: string; family_group_id?: string };
     role = metadata.role ?? null;
+    familyGroupId = metadata.family_group_id ?? null;
   }
 
   // タスク詳細を取得する
@@ -75,6 +79,13 @@ export default async function TaskDetailPage({
   }
 
   const status = statusConfig[task.status] ?? { label: task.status, className: 'bg-gray-100 text-gray-600' };
+
+  // タスクの開始月が支払い済みかどうかを判定する
+  // start_time が null の場合は API と同様に今日（JST）の月を基準にする
+  const paidMonths = familyGroupId ? await getPaidMonths(familyGroupId) : [];
+  const taskBase = task.start_time ? new Date(task.start_time) : new Date();
+  const taskMonth = taskBase.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }).substring(0, 7);
+  const isPaidMonth = paidMonths.includes(taskMonth);
 
   return (
     <div className="max-w-2xl">
@@ -240,7 +251,7 @@ export default async function TaskDetailPage({
       </div>
 
       {/* ステータス変更アクションボタン（Client Component） */}
-      <TaskStatusActions task={task} role={role} />
+      <TaskStatusActions task={task} role={role} isPaidMonth={isPaidMonth} />
     </div>
   );
 }

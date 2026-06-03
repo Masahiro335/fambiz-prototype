@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { EditTaskForm } from './_components/EditTaskForm';
+import { getPaidMonths } from '../../_lib/getPaidMonths';
 import type { Task, JwtPayload } from '@fambiz/types';
 
 // タスク編集ページ（Server Component）
@@ -63,10 +64,12 @@ export default async function EditTaskPage({
     redirect('/tasks');
   }
 
+  const paidMonths = await getPaidMonths(familyGroupId);
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-black mb-6">タスクを編集</h2>
-      <EditTaskForm task={task} familyGroupId={familyGroupId} />
+      <EditTaskForm task={task} familyGroupId={familyGroupId} paidMonths={paidMonths} />
     </div>
   );
 }

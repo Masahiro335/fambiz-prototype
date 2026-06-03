@@ -542,16 +542,42 @@ describe('TasksService', () => {
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
     });
 
-    it('当月の報酬が paid 済みの場合、即時完了で BadRequestException をスローすること', async () => {
+    it('タスクの start_time 月の報酬が paid 済みの場合、承認（reported → completed）で BadRequestException をスローすること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
-      mockTasksRepository.findById.mockResolvedValue(pendingTask);
-      // 当月報酬が paid 済みをシミュレート
+      // start_time が 2026-05（paid月）のタスク
+      const reportedTaskWithStartTime: Task = { ...reportedTask, start_time: '2026-05-15T00:00:00Z' };
+      mockTasksRepository.findById.mockResolvedValue(reportedTaskWithStartTime);
       mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
 
       await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
         BadRequestException,
       );
 
+      // タスクの start_time 月（2026-05）で報酬チェックが行われること
+      expect(mockRewardsRepository.findByChildAndMonth).toHaveBeenCalledWith(
+        reportedTaskWithStartTime.assignee_id,
+        '2026-05',
+      );
+      expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
+      expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
+    });
+
+    it('タスクの start_time 月の報酬が paid 済みの場合、即時完了で BadRequestException をスローすること', async () => {
+      const dto: UpdateTaskStatusDto = { status: 'completed' };
+      // start_time が 2026-05（paid月）のタスク
+      const pendingTaskWithStartTime: Task = { ...pendingTask, start_time: '2026-05-10T00:00:00Z' };
+      mockTasksRepository.findById.mockResolvedValue(pendingTaskWithStartTime);
+      mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
+
+      await expect(service.updateTaskStatus(taskId, dto, parentUser)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      // タスクの start_time 月（2026-05）で報酬チェックが行われること
+      expect(mockRewardsRepository.findByChildAndMonth).toHaveBeenCalledWith(
+        pendingTaskWithStartTime.assignee_id,
+        '2026-05',
+      );
       expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
       expect(mockTasksRepository.updateTaskStatus).not.toHaveBeenCalled();
