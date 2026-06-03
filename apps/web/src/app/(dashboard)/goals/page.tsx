@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { GoalList } from './_components/GoalList';
 import { AssigneeFilter } from '@/components/AssigneeFilter';
+import { MonthNavigator } from '@/components/MonthNavigator';
 import type { Goal, GroupMember, JwtPayload, Task } from '@fambiz/types';
 
 // JST（UTC+9）の現在月を YYYY-MM 形式で返す
@@ -17,12 +18,14 @@ function getDefaultMonth(): string {
 export default async function GoalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ assigneeId?: string }>;
+  searchParams: Promise<{ assigneeId?: string; month?: string }>;
 }) {
-  const { assigneeId } = await searchParams;
+  const { assigneeId, month } = await searchParams;
 
   // 当月（JST）をデフォルトの対象月とする
-  const currentMonth = getDefaultMonth();
+  const todayMonth = getDefaultMonth();
+  // クエリパラメータで月が指定された場合はそれを使用し、なければ当月を使用する
+  const currentMonth = month ?? todayMonth;
 
   const supabase = await createServerClient();
   const {
@@ -155,9 +158,15 @@ export default async function GoalsPage({
         )}
       </div>
 
-      {/* 親ユーザーかつ子メンバーがいる場合のみ担当者フィルタを表示する */}
-      {role === 'parent' && childMembers.length > 0 && (
-        <div className="mb-4">
+      {/* 月ナビゲーターと担当者フィルタを横並びに表示 */}
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        {/* Suspense でラップして useSearchParams のハイドレーションエラーを防ぐ */}
+        <Suspense fallback={<div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />}>
+          <MonthNavigator currentMonth={currentMonth} todayMonth={todayMonth} basePath="/goals" />
+        </Suspense>
+
+        {/* 親ユーザーかつ子メンバーがいる場合のみ担当者フィルタを表示する */}
+        {role === 'parent' && childMembers.length > 0 && (
           <Suspense fallback={<div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />}>
             <AssigneeFilter
               childMembers={childMembers}
@@ -165,13 +174,8 @@ export default async function GoalsPage({
               basePath="/goals"
             />
           </Suspense>
-        </div>
-      )}
-
-      {/* 対象月の表示 */}
-      <p className="text-sm text-gray-500 mb-4">
-        {currentMonth.replace('-', '年')}月の目標
-      </p>
+        )}
+      </div>
 
       {/* 目標一覧コンポーネント */}
       <GoalList goals={goals} taskNameMap={taskNameMap} />

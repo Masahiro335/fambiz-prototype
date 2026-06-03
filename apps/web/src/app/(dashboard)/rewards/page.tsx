@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { RewardSummary } from './_components/RewardSummary';
 import { RewardCompletionsTable } from './_components/RewardCompletionsTable';
 import { RewardActions } from './_components/RewardActions';
-import { MonthNavigator } from './_components/MonthNavigator';
+import { MonthNavigator } from '@/components/MonthNavigator';
 import { ChildSelector } from './_components/ChildSelector';
 import type { Reward, TaskCompletion, GroupMember, JwtPayload } from '@fambiz/types';
 
@@ -164,7 +164,7 @@ export default async function RewardsPage({ searchParams }: RewardsPageProps) {
       <div className="flex flex-wrap items-center gap-4 mb-6">
         {/* Suspense でラップして useSearchParams のハイドレーションエラーを防ぐ */}
         <Suspense fallback={<div className="h-10 w-64 bg-gray-200 rounded animate-pulse" />}>
-          <MonthNavigator currentMonth={targetMonth} todayMonth={todayMonth} />
+          <MonthNavigator currentMonth={targetMonth} todayMonth={todayMonth} basePath="/rewards" />
         </Suspense>
 
         {/* 親ユーザーかつ子が複数いる場合のみ子選択セレクターを表示 */}

@@ -7,6 +7,8 @@ interface MonthNavigatorProps {
   currentMonth: string;
   /** 当月（JST）の YYYY-MM 文字列 */
   todayMonth: string;
+  /** 遷移先のベースパス（例: '/rewards', '/goals'） */
+  basePath: string;
 }
 
 // YYYY-MM 形式の月を前月/翌月に移動する
@@ -18,7 +20,7 @@ function shiftMonth(month: string, delta: number): string {
 
 // 月ナビゲーターコンポーネント（前月/翌月/当月ボタン）
 // クエリパラメータ month を変更することでページを再レンダリングする
-export function MonthNavigator({ currentMonth, todayMonth }: MonthNavigatorProps) {
+export function MonthNavigator({ currentMonth, todayMonth, basePath }: MonthNavigatorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,9 +29,9 @@ export function MonthNavigator({ currentMonth, todayMonth }: MonthNavigatorProps
       // 既存のクエリパラメータを保持しつつ month を更新する
       const params = new URLSearchParams(searchParams.toString());
       params.set('month', targetMonth);
-      router.push(`/rewards?${params.toString()}`);
+      router.push(`${basePath}?${params.toString()}`);
     },
-    [router, searchParams],
+    [router, searchParams, basePath],
   );
 
   const [year, month] = currentMonth.split('-');
