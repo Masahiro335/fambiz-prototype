@@ -36,13 +36,14 @@ export class GoalsRepository {
    * group_id と deleted_flag フィルタで家族グループのデータ分離を保証する。
    * @param groupId - 家族グループID（必須）
    * @param targetMonth - 対象月（YYYY-MM形式・任意）
+   * @param assigneeId - 担当者ユーザーID（任意）
    * @returns 目標の配列（作成日時降順）
    */
-  async findAll(groupId: string, targetMonth?: string): Promise<Goal[]> {
+  async findAll(groupId: string, targetMonth?: string, assigneeId?: string): Promise<Goal[]> {
     let query = this.db
       .from('goals')
       .select(
-        'id, group_id, creator_id, assignee_id, task_id, goal_name, goal_reward, target_count, action, and_condition_flag, status, target_month, created_at, updated_at',
+        'id, group_id, creator_id, assignee_id, task_id, goal_name, goal_reward, target_count, action, and_condition_flag, status, target_month, created_at, updated_at, assignee:users!assignee_id(id, email, name, role, avatar_url, comment, created_at, updated_at)',
       )
       // 家族グループ分離: 自グループの目標のみ取得する
       .eq('group_id', groupId)
@@ -53,6 +54,11 @@ export class GoalsRepository {
       query = query.eq('target_month', targetMonth);
     }
 
+    // 担当者フィルタ（指定された場合のみ）
+    if (assigneeId) {
+      query = query.eq('assignee_id', assigneeId);
+    }
+
     // 作成日時の降順で返す
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -60,7 +66,7 @@ export class GoalsRepository {
       throw new InternalServerErrorException('目標一覧の取得に失敗しました');
     }
 
-    return data ?? [];
+    return (data ?? []) as unknown as Goal[];
   }
 
   /**

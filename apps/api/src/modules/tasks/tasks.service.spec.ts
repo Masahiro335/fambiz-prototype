@@ -22,6 +22,8 @@ const mockTasksRepository = {
   createTaskCompletion: jest.fn(),
   approveTaskCompletion: jest.fn(),
   cancelTaskCompletion: jest.fn(),
+  isMemberOfGroup: jest.fn(),
+  findTaskAssignee: jest.fn(),
 };
 
 // =========================================================================
@@ -127,7 +129,8 @@ describe('TasksService', () => {
     };
 
     it('正常にタスクを作成できること', async () => {
-      // リポジトリがタスクを返すよう設定
+      // assigneeId が指定されているため isMemberOfGroup が呼ばれる → グループ内メンバーとして返す
+      mockTasksRepository.isMemberOfGroup.mockResolvedValue(true);
       mockTasksRepository.createTask.mockResolvedValue(mockTask);
 
       const result = await service.createTask(createTaskDto, parentUser);
@@ -195,10 +198,11 @@ describe('TasksService', () => {
       const result = await service.findAll(groupId, childUser);
 
       expect(result).toEqual(mockTasks);
+      // 子ロールは自分の user.sub で assigneeId が強制フィルタされること
       expect(mockTasksRepository.findAll).toHaveBeenCalledWith({
         groupId,
         status: undefined,
-        assigneeId: undefined,
+        assigneeId: childUser.sub,
         keyword: undefined,
         month: undefined,
         category: undefined,
@@ -521,7 +525,10 @@ describe('TasksService', () => {
         pendingTask.assignee_id,
         pendingTask.reward_amount,
       );
-      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(taskId, parentUser.sub);
+      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(
+        taskId,
+        parentUser.sub,
+      );
       expect(mockTasksRepository.cancelTaskCompletion).not.toHaveBeenCalled();
     });
 
@@ -545,7 +552,10 @@ describe('TasksService', () => {
     it('タスクの start_time 月の報酬が paid 済みの場合、承認（reported → completed）で BadRequestException をスローすること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
       // start_time が 2026-05（paid月）のタスク
-      const reportedTaskWithStartTime: Task = { ...reportedTask, start_time: '2026-05-15T00:00:00Z' };
+      const reportedTaskWithStartTime: Task = {
+        ...reportedTask,
+        start_time: '2026-05-15T00:00:00Z',
+      };
       mockTasksRepository.findById.mockResolvedValue(reportedTaskWithStartTime);
       mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
 

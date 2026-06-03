@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Goal, GoalStatus, JwtPayload } from '@fambiz/types';
 import { GoalsRepository } from './goals.repository';
+import { TasksRepository } from '../tasks/tasks.repository';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { UpdateGoalStatusDto } from './dto/update-goal-status.dto';
@@ -15,7 +16,10 @@ import { UpdateGoalStatusDto } from './dto/update-goal-status.dto';
  */
 @Injectable()
 export class GoalsService {
-  constructor(private readonly goalsRepository: GoalsRepository) {}
+  constructor(
+    private readonly goalsRepository: GoalsRepository,
+    private readonly tasksRepository: TasksRepository,
+  ) {}
 
   /**
    * 目標一覧を取得する（FUN-GOAL-001）。
@@ -29,13 +33,21 @@ export class GoalsService {
    * @param targetMonth - 対象月フィルタ（YYYY-MM形式・任意）
    * @returns 目標の配列
    */
-  async findAll(groupId: string, user: JwtPayload, targetMonth?: string): Promise<Goal[]> {
+  async findAll(
+    groupId: string,
+    user: JwtPayload,
+    targetMonth?: string,
+    assigneeId?: string,
+  ): Promise<Goal[]> {
     // 自分が所属するグループ以外の目標参照を禁止する
     if (groupId !== user.family_group_id) {
       throw new ForbiddenException('他の家族グループの目標は参照できません');
     }
 
-    return this.goalsRepository.findAll(groupId, targetMonth);
+    // 子ロールの場合は自分の目標のみ参照可能（assigneeId を強制的に user.sub で上書き）
+    const effectiveAssigneeId = user.role === 'child' ? user.sub : assigneeId;
+
+    return this.goalsRepository.findAll(groupId, targetMonth, effectiveAssigneeId);
   }
 
   /**
@@ -75,6 +87,28 @@ export class GoalsService {
       throw new ForbiddenException('他の家族グループに目標を作成することはできません');
     }
 
+    // assigneeId が指定されている場合、同一ファミリーグループに属するか検証する
+    if (dto.assigneeId) {
+      const isMember = await this.tasksRepository.isMemberOfGroup(dto.assigneeId, dto.groupId);
+      if (!isMember) {
+        throw new ForbiddenException('指定された担当者は同一ファミリーグループに属していません');
+      }
+    }
+
+    // taskId が指定されている場合、タスクの担当者と目標の担当者が一致するか検証する
+    if (dto.taskId && dto.assigneeId) {
+      const taskAssigneeId = await this.tasksRepository.findTaskAssignee(
+        dto.taskId,
+        user.family_group_id,
+      );
+      if (taskAssigneeId !== null && taskAssigneeId !== dto.assigneeId) {
+        throw new BadRequestException({
+          message: 'タスクの担当者と目標の担当者が一致しません',
+          code: 'ASSIGNEE_MISMATCH',
+        });
+      }
+    }
+
     return this.goalsRepository.create(
       dto.groupId,
       user.sub,
@@ -103,6 +137,39 @@ export class GoalsService {
    * @throws NotFoundException 目標が存在しない、または他グループの目標にアクセスした場合
    */
   async updateGoal(goalId: string, dto: UpdateGoalDto, user: JwtPayload): Promise<Goal> {
+    // assigneeId が指定されている場合、同一ファミリーグループに属するか検証する
+    if (dto.assigneeId) {
+      const isMember = await this.tasksRepository.isMemberOfGroup(
+        dto.assigneeId,
+        user.family_group_id,
+      );
+      if (!isMember) {
+        throw new ForbiddenException('指定された担当者は同一ファミリーグループに属していません');
+      }
+    }
+
+    // taskId が指定されている場合、タスクの担当者と目標の担当者が一致するか検証する
+    if (dto.taskId) {
+      // 目標に適用される assigneeId を決定する（DTO優先、なければ既存目標から取得）
+      let effectiveAssigneeId = dto.assigneeId;
+      if (!effectiveAssigneeId) {
+        const currentGoal = await this.goalsRepository.findById(goalId, user.family_group_id);
+        effectiveAssigneeId = currentGoal?.assignee_id ?? undefined;
+      }
+      if (effectiveAssigneeId) {
+        const taskAssigneeId = await this.tasksRepository.findTaskAssignee(
+          dto.taskId,
+          user.family_group_id,
+        );
+        if (taskAssigneeId !== null && taskAssigneeId !== effectiveAssigneeId) {
+          throw new BadRequestException({
+            message: 'タスクの担当者と目標の担当者が一致しません',
+            code: 'ASSIGNEE_MISMATCH',
+          });
+        }
+      }
+    }
+
     // DTOのキャメルケースをDBのスネークケースに変換して渡す
     const updated = await this.goalsRepository.update(goalId, user.family_group_id, {
       goal_name: dto.goalName,

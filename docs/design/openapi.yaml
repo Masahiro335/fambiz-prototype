@@ -301,6 +301,10 @@ paths:
   /tasks:
     get:
       summary: タスク一覧取得・検索（FUN-TASK-006 / FUN-TASK-007）
+      description: |
+        ロール別フィルタ挙動:
+        - **親（parent）**: `assigneeId` クエリパラメータで担当者を絞り込める。省略時は全担当者のタスクを返す。
+        - **子（child）**: `assigneeId` 指定値を無視し、自分の `user_id` で自動フィルタされる（他の子のタスクは参照不可）。
       tags: [TASK]
       parameters:
       - name: groupId
@@ -317,6 +321,7 @@ paths:
       - name: assigneeId
         in: query
         required: false
+        description: 担当者フィルタ（親ロールのみ有効）。子ロールの場合は無視され自分の ID で自動フィルタされる。
         schema:
           type: string
           format: uuid
@@ -358,6 +363,9 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     post:
       summary: タスク登録（親のみ・FUN-TASK-001）
+      description: |
+        `assigneeId` を指定した場合、指定ユーザーが同一ファミリーグループのメンバーであるか検証する。
+        グループ外ユーザーを指定した場合は 403 エラーを返す。
       tags: [TASK]
       requestBody:
         required: true
@@ -377,7 +385,11 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 権限エラー（ロール不足、または指定した担当者が同一ファミリーグループに属していない）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /tasks/{taskId}:
     get:
@@ -472,6 +484,10 @@ paths:
   /goals:
     get:
       summary: 目標一覧取得（FUN-GOAL-001）
+      description: |
+        ロール別フィルタ挙動:
+        - **親（parent）**: `assigneeId` クエリパラメータで担当者を絞り込める。省略時は全担当者の目標を返す。
+        - **子（child）**: `assigneeId` 指定値を無視し、自分の `user_id` で自動フィルタされる（他の子の目標は参照不可）。
       tags: [GOAL]
       parameters:
       - name: groupId
@@ -486,6 +502,13 @@ paths:
         schema:
           type: string
           pattern: '^\d{4}-\d{2}$'
+      - name: assigneeId
+        in: query
+        required: false
+        description: 担当者フィルタ（親ロールのみ有効）。子ロールの場合は無視され自分の ID で自動フィルタされる。
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: 目標一覧取得成功
@@ -501,6 +524,11 @@ paths:
           $ref: '#/components/responses/Unauthorized'
     post:
       summary: 目標登録（親のみ・FUN-GOAL-003）
+      description: |
+        バリデーション:
+        - `assigneeId` を指定した場合、指定ユーザーが同一ファミリーグループのメンバーであるか検証する。グループ外なら 403。
+        - `taskId` と `assigneeId` を両方指定した場合、タスクの `assignee_id` と目標の `assigneeId` が一致するか検証する。
+          不一致の場合は `{ code: "ASSIGNEE_MISMATCH" }` を含む 400 エラーを返す。
       tags: [GOAL]
       requestBody:
         required: true
@@ -516,11 +544,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/Goal'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: |
+            リクエストが不正。`code: "ASSIGNEE_MISMATCH"` の場合はタスクと目標の担当者が不一致。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 権限エラー（ロール不足、または指定した担当者が同一ファミリーグループに属していない）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /goals/{goalId}:
     get:
@@ -541,6 +578,11 @@ paths:
           $ref: '#/components/responses/NotFound'
     put:
       summary: 目標編集（親のみ・FUN-GOAL-003）
+      description: |
+        バリデーション:
+        - `assigneeId` を指定した場合、指定ユーザーが同一ファミリーグループのメンバーであるか検証する。グループ外なら 403。
+        - `taskId` を指定した場合、適用される担当者（DTO の `assigneeId` または既存目標の `assignee_id`）と
+          タスクの `assignee_id` が一致するか検証する。不一致の場合は `{ code: "ASSIGNEE_MISMATCH" }` を含む 400 エラーを返す。
       tags: [GOAL]
       parameters:
       - $ref: '#/components/parameters/GoalId'
@@ -558,11 +600,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/Goal'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: |
+            リクエストが不正。`code: "ASSIGNEE_MISMATCH"` の場合はタスクと目標の担当者が不一致。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: 権限エラー（ロール不足、または指定した担当者が同一ファミリーグループに属していない）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
@@ -720,7 +771,7 @@ paths:
 
   /rewards/graph:
     get:
-      summary: 報酬グラフ用データの取得・カテゴリ別・推移（FUN-REWARD-004）
+      summary: 報酬グラフ用データの取得・月次推移（FUN-REWARD-004）
       tags: [REWARD]
       parameters:
       - name: groupId
@@ -863,8 +914,11 @@ components:
       properties:
         code:
           type: string
-          description: エラーコード
-          examples: [VALIDATION_ERROR]
+          description: |
+            エラーコード。主なコード:
+            - `VALIDATION_ERROR`: バリデーションエラー（入力値不正）
+            - `ASSIGNEE_MISMATCH`: タスクの担当者と目標の担当者が不一致（POST/PUT /goals）
+          examples: [VALIDATION_ERROR, ASSIGNEE_MISMATCH]
         message:
           type: string
           description: エラーメッセージ
@@ -910,11 +964,14 @@ components:
 
     AuthResponse:
       type: object
-      required: [accessToken, user]
+      required: [accessToken, refreshToken, user]
       properties:
         accessToken:
           type: string
           description: JWTアクセストークン
+        refreshToken:
+          type: string
+          description: セッション更新用リフレッシュトークン
         user:
           $ref: '#/components/schemas/User'
 
@@ -931,7 +988,7 @@ components:
 
     User:
       type: object
-      required: [id, email, name, role]
+      required: [id, email, name, role, avatar_url, comment, created_at, updated_at]
       properties:
         id:
           type: string
@@ -943,7 +1000,7 @@ components:
           type: string
         role:
           $ref: '#/components/schemas/UserRole'
-        avatarUrl:
+        avatar_url:
           type:
           - string
           - 'null'
@@ -952,23 +1009,33 @@ components:
           type:
           - string
           - 'null'
-        createdAt:
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
 
     Group:
       type: object
-      required: [id, groupName, ownerId]
+      required: [id, group_name, owner_id, created_at, updated_at]
       properties:
         id:
           type: string
           format: uuid
-        groupName:
+        group_name:
           type: string
-        ownerId:
+        invite_code:
+          type:
+          - string
+          - 'null'
+        owner_id:
           type: string
           format: uuid
-        createdAt:
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
 
@@ -981,19 +1048,22 @@ components:
 
     GroupMember:
       type: object
-      required: [id, groupId, user]
+      required: [id, group_id, user_id, joined_at]
       properties:
         id:
           type: string
           format: uuid
-        groupId:
+        group_id:
           type: string
           format: uuid
-        user:
-          $ref: '#/components/schemas/User'
-        joinedAt:
+        user_id:
+          type: string
+          format: uuid
+        joined_at:
           type: string
           format: date-time
+        user:
+          $ref: '#/components/schemas/User'
 
     InviteResponse:
       type: object
@@ -1029,44 +1099,44 @@ components:
 
     Task:
       type: object
-      required: [id, groupId, creatorId, taskName, rewardAmount, status]
+      required: [id, group_id, creator_id, task_name, reward_amount, status, created_at, updated_at]
       properties:
         id:
           type: string
           format: uuid
-        groupId:
+        group_id:
           type: string
           format: uuid
-        creatorId:
+        creator_id:
           type: string
           format: uuid
-        assigneeId:
+        assignee_id:
           type:
           - string
           - 'null'
           format: uuid
-        taskName:
+        task_name:
           type: string
         category:
           type:
           - string
           - 'null'
-        rewardAmount:
+        reward_amount:
           type: integer
           minimum: 0
         status:
           $ref: '#/components/schemas/TaskStatus'
-        startTime:
+        start_time:
           type:
           - string
           - 'null'
           format: date-time
-        endTime:
+        end_time:
           type:
           - string
           - 'null'
           format: date-time
-        dueDate:
+        due_date:
           type:
           - string
           - 'null'
@@ -1075,34 +1145,47 @@ components:
           type:
           - string
           - 'null'
-        latestCompletion:
+        latest_completion:
           type:
           - object
           - 'null'
           description: 最新の実行報告情報（reported / completed 状態時に参照）
           properties:
-            reportedAt:
-              type: string
-              format: date-time
-            reportedBy:
+            id:
               type: string
               format: uuid
-            approvedAt:
+            task_id:
+              type: string
+              format: uuid
+            child_id:
+              type: string
+              format: uuid
+            reported_at:
+              type: string
+              format: date-time
+            approved_by:
+              type:
+              - string
+              - 'null'
+              format: uuid
+            approved_at:
               type:
               - string
               - 'null'
               format: date-time
-            approvedBy:
-              type:
-              - string
-              - 'null'
-              format: uuid
-        createdAt:
+            confirmed_reward:
+              type: integer
+              minimum: 0
+        created_at:
           type: string
           format: date-time
-        updatedAt:
+        updated_at:
           type: string
           format: date-time
+        creator:
+          $ref: '#/components/schemas/User'
+        assignee:
+          $ref: '#/components/schemas/User'
 
     TaskCreateRequest:
       type: object
@@ -1170,69 +1253,71 @@ components:
 
     TaskCompletion:
       type: object
-      required: [id, taskId, taskName, childId, reportedAt, confirmedReward]
+      required: [id, task_id, child_id, reported_at, confirmed_reward]
       properties:
         id:
           type: string
           format: uuid
-        taskId:
+        task_id:
           type: string
           format: uuid
-        taskName:
+        task_name:
           type: string
+          description: タスク名（報酬明細取得時に付与）
         category:
           type:
           - string
           - 'null'
-        childId:
+          description: タスク分類（報酬明細取得時に付与）
+        child_id:
           type: string
           format: uuid
-        reportedAt:
+        reported_at:
           type: string
           format: date-time
-        approvedBy:
+        approved_by:
           type:
           - string
           - 'null'
           format: uuid
-        approvedAt:
+        approved_at:
           type:
           - string
           - 'null'
           format: date-time
-        confirmedReward:
+        confirmed_reward:
           type: integer
           minimum: 0
 
     Goal:
       type: object
-      required: [id, groupId, creatorId, goalName, goalReward, status, targetMonth]
+      required: [id, group_id, creator_id, goal_name, goal_reward, and_condition_flag, status, target_month, created_at, updated_at]
       properties:
         id:
           type: string
           format: uuid
-        groupId:
+        group_id:
           type: string
           format: uuid
-        creatorId:
+        creator_id:
           type: string
           format: uuid
-        assigneeId:
+        assignee_id:
           type:
           - string
           - 'null'
           format: uuid
-        taskId:
+        task_id:
           type:
           - string
           - 'null'
           format: uuid
-        goalName:
+        goal_name:
           type: string
-        goalReward:
+        goal_reward:
           type: integer
           minimum: 0
-        targetCount:
+        target_count:
           type:
           - integer
           - 'null'
@@ -1240,19 +1325,23 @@ components:
           type:
           - string
           - 'null'
-        andConditionFlag:
+        and_condition_flag:
           type: boolean
         status:
           $ref: '#/components/schemas/GoalStatus'
-        targetMonth:
+        target_month:
           type: string
           pattern: '^\d{4}-\d{2}$'
-        progressRate:
-          type: number
-          description: 達成率（0〜100）
-        createdAt:
+        created_at:
           type: string
           format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        creator:
+          $ref: '#/components/schemas/User'
+        assignee:
+          $ref: '#/components/schemas/User'
 
     GoalCreateRequest:
       type: object
@@ -1315,43 +1404,51 @@ components:
 
     Reward:
       type: object
-      required: [id, groupId, childId, targetMonth, totalAmount, status]
+      required: [id, group_id, child_id, target_month, task_reward_total, bonus_reward_total, total_amount, status, created_at, updated_at]
       properties:
         id:
           type: string
           format: uuid
-        groupId:
+        group_id:
           type: string
           format: uuid
-        childId:
+        child_id:
           type: string
           format: uuid
-        targetMonth:
+        target_month:
           type: string
           pattern: '^\d{4}-\d{2}$'
-        taskRewardTotal:
+        task_reward_total:
           type: integer
-        bonusRewardTotal:
+        bonus_reward_total:
           type: integer
-        totalAmount:
+        total_amount:
           type: integer
-        evaluationScore:
+        evaluation_score:
           type:
           - integer
           - 'null'
           minimum: 1
           maximum: 5
-        evaluationComment:
+        evaluation_comment:
           type:
           - string
           - 'null'
         status:
           $ref: '#/components/schemas/RewardStatus'
-        paidAt:
+        paid_at:
           type:
           - string
           - 'null'
           format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        child:
+          $ref: '#/components/schemas/User'
 
     EvaluationRequest:
       type: object
@@ -1366,41 +1463,22 @@ components:
 
     RewardGraph:
       type: object
-      required: [targetMonth, categories, history]
+      required: [months]
+      description: 報酬グラフ用データ（対象月を含む直近 historyMonths ヶ月分）
       properties:
-        targetMonth:
-          type: string
-          pattern: '^\d{4}-\d{2}$'
-        totalAmount:
-          type: integer
-        categories:
+        months:
           type: array
-          description: 当月のカテゴリ別報酬内訳
+          description: 月次報酬データの配列（対象月を含む直近 historyMonths ヶ月分・昇順）
           items:
             type: object
-            required: [category, amount]
+            required: [target_month, task_reward_total, bonus_reward_total, total_amount]
             properties:
-              category:
-                type: string
-              amount:
-                type: integer
-              completedCount:
-                type: integer
-              achievementRate:
-                type: number
-        history:
-          type: array
-          description: 過去数ヶ月の月次報酬推移（historyMonthsパラメータで件数を指定）
-          items:
-            type: object
-            required: [month, totalAmount]
-            properties:
-              month:
+              target_month:
                 type: string
                 pattern: '^\d{4}-\d{2}$'
-              totalAmount:
+              task_reward_total:
                 type: integer
-              taskRewardTotal:
+              bonus_reward_total:
                 type: integer
-              bonusRewardTotal:
+              total_amount:
                 type: integer

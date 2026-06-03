@@ -99,6 +99,7 @@ export class TasksRepository {
   /**
    * フィルタ条件に一致するタスク一覧を取得する。
    * group_id フィルタで家族グループのデータ分離を保証する。
+   * assignee の name を JOIN して返す（タスク検索結果の担当者表示に使用）。
    * @param filter - フィルタ条件（groupId は必須）
    * @returns タスクの配列（作成日時降順）
    */
@@ -106,7 +107,7 @@ export class TasksRepository {
     let query = this.db
       .from('tasks')
       .select(
-        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at, assignee:users!assignee_id(id, name)',
       )
       // 家族グループ分離: 自グループのタスクのみ取得する
       .eq('group_id', filter.groupId)
@@ -161,7 +162,8 @@ export class TasksRepository {
       throw new InternalServerErrorException('タスク一覧の取得に失敗しました');
     }
 
-    return data ?? [];
+    // assignee フィールドは SELECT の JOIN 結果のため型アサーションが必要
+    return (data ?? []) as unknown as Task[];
   }
 
   /**
@@ -362,6 +364,51 @@ export class TasksRepository {
 
     // 対象レコードが存在しない場合（data === null）はエラーにしない
     void data;
+  }
+
+  /**
+   * 指定ユーザーが家族グループのメンバーか確認する。
+   * @param userId - 確認対象のユーザーID
+   * @param groupId - 家族グループID
+   * @returns メンバーであれば true
+   */
+  async isMemberOfGroup(userId: string, groupId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('group_members')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('メンバー確認に失敗しました');
+    }
+
+    return data !== null;
+  }
+
+  /**
+   * タスクの assignee_id のみを返す軽量クエリ。
+   * 目標とタスクの担当者整合性チェックに使用する。
+   * @param taskId - タスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @returns assignee_id。タスクが存在しない場合は null
+   */
+  async findTaskAssignee(taskId: string, groupId: string): Promise<string | null> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .select('assignee_id')
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの担当者取得に失敗しました');
+    }
+
+    return (data?.assignee_id ?? null) as string | null;
   }
 
   /**

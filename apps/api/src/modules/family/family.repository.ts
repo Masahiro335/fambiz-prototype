@@ -108,7 +108,7 @@ export class FamilyRepository {
     const { data, error } = await this.db
       .from('group_members')
       .select(
-        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+        'id, group_id, user_id, joined_at, user:users!user_id(id, email, name, role, avatar_url, comment, created_at, updated_at)',
       )
       .eq('group_id', groupId)
       .eq('deleted_flag', false)
@@ -132,7 +132,7 @@ export class FamilyRepository {
     const { data, error } = await this.db
       .from('group_members')
       .select(
-        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+        'id, group_id, user_id, joined_at, user:users!user_id(id, email, name, role, avatar_url, comment, created_at, updated_at)',
       )
       .eq('group_id', groupId)
       .eq('user_id', userId)
@@ -176,7 +176,7 @@ export class FamilyRepository {
     const { data, error } = await this.db
       .from('group_members')
       .select(
-        'id, group_id, user_id, joined_at, user:users(id, email, name, role, avatar_url, comment, created_at, updated_at)',
+        'id, group_id, user_id, joined_at, user:users!user_id(id, email, name, role, avatar_url, comment, created_at, updated_at)',
       )
       .eq('user_id', userId)
       .eq('deleted_flag', false)

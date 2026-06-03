@@ -3,6 +3,7 @@ import type { Task, TaskStatus } from '@fambiz/types';
 
 interface TaskSearchResultsProps {
   tasks: Task[];
+  role?: string | null;
 }
 
 // ステータスのラベルとカラークラスの定義（TaskCard.tsx と同一定義）
@@ -38,7 +39,9 @@ const categoryConfig: Record<string, { className: string }> = {
 };
 
 // タスク検索結果テーブルコンポーネント（サーバーコンポーネント）
-export function TaskSearchResults({ tasks }: TaskSearchResultsProps) {
+export function TaskSearchResults({ tasks, role }: TaskSearchResultsProps) {
+  const showAssigneeColumn = role === 'parent';
+
   // 検索結果が0件の場合はメッセージを表示する
   if (tasks.length === 0) {
     return (
@@ -73,6 +76,9 @@ export function TaskSearchResults({ tasks }: TaskSearchResultsProps) {
               <th className="text-left px-4 py-3 font-medium text-gray-600">タスク名</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">分類</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">ステータス</th>
+              {showAssigneeColumn && (
+                <th className="text-left px-4 py-3 font-medium text-gray-600">担当者</th>
+              )}
               <th className="text-right px-4 py-3 font-medium text-gray-600">報酬</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">期日</th>
             </tr>
@@ -121,6 +127,15 @@ export function TaskSearchResults({ tasks }: TaskSearchResultsProps) {
                       {status.label}
                     </span>
                   </td>
+
+                  {/* 担当者（親ロールのみ表示） */}
+                  {showAssigneeColumn && (
+                    <td className="px-4 py-3 text-gray-600 text-sm">
+                      {(task.assignee as { id: string; name: string } | undefined)?.name ?? (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                  )}
 
                   {/* 報酬（右揃え） */}
                   <td className="px-4 py-3 text-right font-medium text-gray-700">

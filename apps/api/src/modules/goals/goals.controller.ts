@@ -48,6 +48,7 @@ export class GoalsController {
     required: false,
     description: '対象月フィルタ（YYYY-MM形式）',
   })
+  @ApiQuery({ name: 'assigneeId', required: false, description: '担当者ユーザーID（UUID）' })
   @ApiResponse({ status: 200, description: '目標一覧取得成功', type: [GoalResponseDto] })
   @ApiResponse({ status: 401, description: '未認証' })
   @ApiResponse({ status: 403, description: '権限なし（他グループへのアクセス）' })
@@ -55,8 +56,9 @@ export class GoalsController {
     @Query('groupId') groupId: string,
     @CurrentUser() user: JwtPayload,
     @Query('targetMonth') targetMonth?: string,
+    @Query('assigneeId') assigneeId?: string,
   ): Promise<GoalResponseDto[]> {
-    return this.goalsService.findAll(groupId, user, targetMonth);
+    return this.goalsService.findAll(groupId, user, targetMonth, assigneeId);
   }
 
   /**

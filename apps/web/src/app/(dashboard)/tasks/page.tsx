@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { TaskCalendar } from './_components/TaskCalendar';
-import type { Task, JwtPayload } from '@fambiz/types';
+import { AssigneeFilter } from '@/components/AssigneeFilter';
+import type { GroupMember, Task, JwtPayload } from '@fambiz/types';
 
 // JST（UTC+9）の現在月を YYYY-MM 形式で返す
 function getDefaultMonth(): string {
@@ -15,9 +17,9 @@ function getDefaultMonth(): string {
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; assigneeId?: string }>;
 }) {
-  const { month: monthParam } = await searchParams;
+  const { month: monthParam, assigneeId } = await searchParams;
 
   // 月パラメータが未指定の場合は現在月（JST）をデフォルトにする
   const currentMonth = monthParam ?? getDefaultMonth();
@@ -35,6 +37,7 @@ export default async function TasksPage({
   // JWTペイロードからユーザーのロールとfamily_group_idを取得する
   let role: string | null = null;
   let familyGroupId: string | null = null;
+  let userId: string | null = null;
 
   try {
     const payload = JSON.parse(
@@ -42,6 +45,7 @@ export default async function TasksPage({
     ) as Partial<JwtPayload>;
     role = payload.role ?? null;
     familyGroupId = payload.family_group_id ?? null;
+    userId = payload.sub ?? null;
   } catch {
     // JWTのパースに失敗した場合はuser_metadataからフォールバックする
     const metadata = session.user.user_metadata as {
@@ -50,6 +54,7 @@ export default async function TasksPage({
     };
     role = metadata.role ?? null;
     familyGroupId = metadata.family_group_id ?? null;
+    userId = session.user.id;
   }
 
   // グループ未参加の場合はメッセージを表示する
@@ -90,12 +95,34 @@ export default async function TasksPage({
     );
   }
 
+  // 親ユーザーの場合は子メンバー一覧を取得する（担当者フィルタUI用）
+  let childMembers: GroupMember[] = [];
+  if (role === 'parent') {
+    try {
+      const allMembers = await apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`);
+      childMembers = allMembers.filter((m) => m.user?.role === 'child');
+    } catch {
+      // メンバー取得失敗時は空のリストとして扱う
+    }
+  }
+
+  // 有効な担当者IDを決定する
+  // 子ロールの場合: 自分のID（APIサーバー側でも強制するがフロントでも明示する）
+  // 親ロールの場合: クエリパラメータ assigneeId（未指定なら全員表示）
+  const effectiveAssigneeId = role === 'child' ? userId : (assigneeId ?? '');
+
   // 当月のタスク一覧を取得する（month パラメータを渡す）
+  const queryParams = new URLSearchParams({
+    groupId: familyGroupId,
+    month: currentMonth,
+  });
+  if (effectiveAssigneeId) {
+    queryParams.set('assigneeId', effectiveAssigneeId);
+  }
+
   let tasks: Task[] = [];
   try {
-    tasks = await apiFetch<Task[]>(
-      `/v1/tasks?groupId=${familyGroupId}&month=${currentMonth}`,
-    );
+    tasks = await apiFetch<Task[]>(`/v1/tasks?${queryParams.toString()}`);
   } catch {
     // APIエラー時は空のリストとして扱う（エラー境界に委譲しない）
     tasks = [];
@@ -103,7 +130,7 @@ export default async function TasksPage({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-black">タスク</h2>
         {/* 親ユーザーのみ「タスクを登録」ボタンを表示する */}
         {role === 'parent' && (
@@ -115,6 +142,19 @@ export default async function TasksPage({
           </Link>
         )}
       </div>
+
+      {/* 親ユーザーかつ子メンバーがいる場合のみ担当者フィルタを表示する */}
+      {role === 'parent' && childMembers.length > 0 && (
+        <div className="mb-4">
+          <Suspense fallback={<div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />}>
+            <AssigneeFilter
+              childMembers={childMembers}
+              selectedAssigneeId={assigneeId ?? ''}
+              basePath="/tasks"
+            />
+          </Suspense>
+        </div>
+      )}
 
       {/* カレンダーコンポーネントにタスク・月・ロールを渡す */}
       <TaskCalendar tasks={tasks} month={currentMonth} role={role} />

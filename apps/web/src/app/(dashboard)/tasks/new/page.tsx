@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@/lib/supabase/server';
+import { apiFetch } from '@/lib/api/fetcher';
 import { CreateTaskForm } from '../_components/CreateTaskForm';
 import { getPaidMonths } from '../_lib/getPaidMonths';
-import type { JwtPayload } from '@fambiz/types';
+import type { GroupMember, JwtPayload } from '@fambiz/types';
 
 // タスク新規登録ページ（Server Component）
 // 親ユーザーのみアクセス可能。childがアクセスした場合はタスク一覧へリダイレクトする。
@@ -17,7 +18,7 @@ export default async function NewTaskPage() {
     return null;
   }
 
-    // JWTペイロードからロールと家族グループIDを取得する
+  // JWTペイロードからロールと家族グループIDを取得する
   let role: string | null = null;
   let familyGroupId: string | null = null;
 
@@ -46,10 +47,18 @@ export default async function NewTaskPage() {
 
   const paidMonths = await getPaidMonths(familyGroupId);
 
+  // 担当者（子）の選択肢として家族メンバーを取得する
+  let members: GroupMember[] = [];
+  try {
+    members = await apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`);
+  } catch {
+    members = [];
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-black mb-6">タスクを登録</h2>
-      <CreateTaskForm groupId={familyGroupId} paidMonths={paidMonths} />
+      <CreateTaskForm groupId={familyGroupId} paidMonths={paidMonths} members={members} />
     </div>
   );
 }

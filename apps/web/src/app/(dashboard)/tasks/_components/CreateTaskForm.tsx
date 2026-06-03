@@ -3,22 +3,34 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import type { Task } from '@fambiz/types';
+import type { GroupMember, Task } from '@fambiz/types';
 
 // 分類の選択肢
 const CATEGORIES = ['掃除', '料理', '洗濯', 'その他'] as const;
 type Category = (typeof CATEGORIES)[number];
 
 // タスク登録フォームコンポーネント（Client Component）
-export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidMonths: string[] }) {
+export function CreateTaskForm({
+  groupId,
+  paidMonths,
+  members,
+}: {
+  groupId: string;
+  paidMonths: string[];
+  members: GroupMember[];
+}) {
   const router = useRouter();
 
   // JSTで今日の日付をYYYY-MM-DD形式で取得する
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
 
+  // 担当者（子ユーザー）の選択肢
+  const childMembers = members.filter((m) => m.user?.role === 'child');
+
   // フォームフィールドの状態
   const [taskName, setTaskName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
+  const [assigneeId, setAssigneeId] = useState('');
   const [startDate, setStartDate] = useState(today);
   const [startTime, setStartTime] = useState('00:00');
   const [endDate, setEndDate] = useState(today);
@@ -42,6 +54,12 @@ export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidM
     // バリデーション: タスク名は必須
     if (!taskName.trim()) {
       setErrorMessage('タスク名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 担当者は必須
+    if (childMembers.length > 0 && !assigneeId) {
+      setErrorMessage('担当者を選択してください。');
       return;
     }
 
@@ -87,6 +105,7 @@ export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidM
         groupId,
         taskName: taskName.trim(),
         ...(category ? { category } : {}),
+        ...(assigneeId ? { assigneeId } : {}),
         rewardAmount: rewardNum,
         startTime: startTimeIso,
         endTime: endTimeIso,
@@ -180,6 +199,29 @@ export function CreateTaskForm({ groupId, paidMonths }: { groupId: string; paidM
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
+
+        {/* 担当者（子ユーザーがいる場合のみ表示） */}
+        {childMembers.length > 0 && (
+          <div>
+            <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700 mb-1">
+              担当者 <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="assigneeId"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              required
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">担当者を選択してください</option>
+              {childMembers.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user?.name ?? m.user_id}（{m.user?.role ?? 'child'}）
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* 分類（ボタン選択） */}
         <div>

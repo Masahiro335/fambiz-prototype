@@ -38,6 +38,14 @@ export class TasksService {
       throw new ForbiddenException('他の家族グループにタスクを作成することはできません');
     }
 
+    // assigneeId が指定されている場合、同一ファミリーグループに属するか検証する
+    if (dto.assigneeId) {
+      const isMember = await this.tasksRepository.isMemberOfGroup(dto.assigneeId, dto.groupId);
+      if (!isMember) {
+        throw new ForbiddenException('指定された担当者は同一ファミリーグループに属していません');
+      }
+    }
+
     return this.tasksRepository.createTask(
       dto.groupId,
       user.sub,
@@ -82,7 +90,17 @@ export class TasksService {
       throw new ForbiddenException('他の家族グループのタスクは参照できません');
     }
 
-    return this.tasksRepository.findAll({ groupId, status, assigneeId, keyword, month, category });
+    // 子ロールの場合は自分のタスクのみ参照可能（assigneeId を強制的に user.sub で上書き）
+    const effectiveAssigneeId = user.role === 'child' ? user.sub : assigneeId;
+
+    return this.tasksRepository.findAll({
+      groupId,
+      status,
+      assigneeId: effectiveAssigneeId,
+      keyword,
+      month,
+      category,
+    });
   }
 
   /**
@@ -272,7 +290,11 @@ export class TasksService {
             `${targetMonth} の報酬は支払い済みのため、即時完了はできません。来月以降に実施してください`,
           );
         }
-        await this.tasksRepository.createTaskCompletion(taskId, currentTask.assignee_id, currentTask.reward_amount);
+        await this.tasksRepository.createTaskCompletion(
+          taskId,
+          currentTask.assignee_id,
+          currentTask.reward_amount,
+        );
         await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
       }
     }

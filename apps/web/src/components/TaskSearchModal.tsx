@@ -33,13 +33,15 @@ const statusConfig: Record<TaskStatus, { label: string; badgeClass: string }> = 
 
 interface TaskSearchModalProps {
   groupId: string;
+  /** 担当者でタスクを絞り込む場合に指定するユーザーID */
+  assigneeId?: string;
   /** タスクを選択したときに taskId と task_name を返すコールバック */
   onSelect: (taskId: string, taskName: string) => void;
   onClose: () => void;
 }
 
 // タスク検索モーダルコンポーネント（Client Component）
-export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalProps) {
+export function TaskSearchModal({ groupId, assigneeId, onSelect, onClose }: TaskSearchModalProps) {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState<string>('');
   const [status, setStatus] = useState<string>('');
@@ -64,6 +66,8 @@ export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalP
       if (keyword.trim()) params.set('keyword', keyword.trim());
       if (category) params.set('category', category);
       if (status) params.set('status', status);
+      // 担当者フィルタが指定されている場合は絞り込む（目標登録時のタスク担当者整合性確保）
+      if (assigneeId) params.set('assigneeId', assigneeId);
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/v1/tasks?${params.toString()}`,
@@ -205,6 +209,7 @@ export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalP
                 <tr className="bg-gray-50 border-b sticky top-0">
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">タスク名</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">分類</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">担当者名</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">ステータス</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">期日</th>
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">報酬</th>
@@ -241,6 +246,9 @@ export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalP
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {task.assignee?.name ?? <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
                         <span

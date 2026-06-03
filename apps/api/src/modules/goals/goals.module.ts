@@ -3,6 +3,7 @@ import { PassportModule } from '@nestjs/passport';
 import { GoalsController } from './goals.controller';
 import { GoalsService } from './goals.service';
 import { GoalsRepository } from './goals.repository';
+import { TasksRepository } from '../tasks/tasks.repository';
 import { JwtStrategy } from '../../shared/strategies/jwt.strategy';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 
@@ -16,7 +17,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [GoalsController],
-  providers: [GoalsService, GoalsRepository, JwtStrategy, RolesGuard],
+  providers: [GoalsService, GoalsRepository, TasksRepository, JwtStrategy, RolesGuard],
   exports: [GoalsService],
 })
 export class GoalsModule {}
