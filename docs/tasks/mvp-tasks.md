@@ -173,6 +173,29 @@
 
 ---
 
+## 担当者（assignee）選択・フィルタ機能（fix/child-select-scr）
+
+### バックエンド（NestJS）
+
+- [x] 🟡 FUN-TASK-001: タスク登録時に `assigneeId` のグループメンバー検証を追加（グループ外なら 403）
+- [x] 🟡 FUN-TASK-006: タスク一覧 API — 子ロールは `assigneeId` を `user.sub` で強制フィルタ
+- [x] 🟡 FUN-GOAL-001: 目標一覧 API — `assigneeId` クエリパラメータ追加。子ロールは `user.sub` で強制フィルタ
+- [x] 🟡 FUN-GOAL-003: 目標登録・編集 API — `assigneeId` グループメンバー検証追加。`taskId` + `assigneeId` 担当者不一致時に `ASSIGNEE_MISMATCH`（400）エラー返却
+- [x] 🟡 `tasks.repository.ts`: `isMemberOfGroup()` / `findTaskAssignee()` ヘルパー追加。タスク一覧 SELECT に `assignee:users!assignee_id(id, name)` JOIN 追加
+- [x] 🟡 `goals.module.ts`: `TasksRepository` を providers に追加（担当者検証用）
+
+### フロントエンド（Next.js）
+
+- [x] 🟡 `components/AssigneeFilter.tsx`（新規）: 親向け担当者フィルタ共通コンポーネント（`useSearchParams` + `useRouter`、`<Suspense>` ラッパー対応）
+- [x] 🟡 SCR-TASK-003: タスク新規登録画面 — 担当者選択セレクトボックス追加（子メンバーがいる場合は必須）
+- [x] 🟡 SCR-TASK-001: タスク一覧画面 — 親向け担当者フィルタUI追加。子は自分のタスクを自動表示
+- [x] 🟡 SCR-TASK-005: タスク検索画面 — 担当者フィルタ追加（親のみ）。検索結果に担当者列（親のみ表示）
+- [x] 🟡 SCR-GOAL-001: 目標一覧画面 — 親向け担当者フィルタUI追加。子は自分の目標を自動表示
+- [x] 🟡 SCR-GOAL-003: 目標新規登録画面 — 担当者必須バリデーション追加。担当者変更時はタスク選択をリセット。タスク検索時に担当者未選択はインラインエラー表示
+- [x] 🟡 `components/TaskSearchModal.tsx`: `assigneeId?: string` prop 追加。検索時に assigneeId を API params に付与
+
+---
+
 ## Phase 7: E2Eテスト・品質保証
 
 - [ ] 🟢 主要フローのE2Eテスト（Playwright or Cypress）

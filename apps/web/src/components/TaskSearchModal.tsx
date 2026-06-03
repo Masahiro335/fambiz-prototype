@@ -33,13 +33,15 @@ const statusConfig: Record<TaskStatus, { label: string; badgeClass: string }> = 
 
 interface TaskSearchModalProps {
   groupId: string;
+  /** 担当者でタスクを絞り込む場合に指定するユーザーID */
+  assigneeId?: string;
   /** タスクを選択したときに taskId と task_name を返すコールバック */
   onSelect: (taskId: string, taskName: string) => void;
   onClose: () => void;
 }
 
 // タスク検索モーダルコンポーネント（Client Component）
-export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalProps) {
+export function TaskSearchModal({ groupId, assigneeId, onSelect, onClose }: TaskSearchModalProps) {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState<string>('');
   const [status, setStatus] = useState<string>('');
@@ -64,6 +66,8 @@ export function TaskSearchModal({ groupId, onSelect, onClose }: TaskSearchModalP
       if (keyword.trim()) params.set('keyword', keyword.trim());
       if (category) params.set('category', category);
       if (status) params.set('status', status);
+      // 担当者フィルタが指定されている場合は絞り込む（目標登録時のタスク担当者整合性確保）
+      if (assigneeId) params.set('assigneeId', assigneeId);
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/v1/tasks?${params.toString()}`,

@@ -36,9 +36,10 @@ export class GoalsRepository {
    * group_id と deleted_flag フィルタで家族グループのデータ分離を保証する。
    * @param groupId - 家族グループID（必須）
    * @param targetMonth - 対象月（YYYY-MM形式・任意）
+   * @param assigneeId - 担当者ユーザーID（任意）
    * @returns 目標の配列（作成日時降順）
    */
-  async findAll(groupId: string, targetMonth?: string): Promise<Goal[]> {
+  async findAll(groupId: string, targetMonth?: string, assigneeId?: string): Promise<Goal[]> {
     let query = this.db
       .from('goals')
       .select(
@@ -51,6 +52,11 @@ export class GoalsRepository {
     // 対象月フィルタ（指定された場合のみ）
     if (targetMonth) {
       query = query.eq('target_month', targetMonth);
+    }
+
+    // 担当者フィルタ（指定された場合のみ）
+    if (assigneeId) {
+      query = query.eq('assignee_id', assigneeId);
     }
 
     // 作成日時の降順で返す

@@ -3,19 +3,20 @@ import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { TaskSearchForm } from './_components/TaskSearchForm';
 import { TaskSearchResults } from './_components/TaskSearchResults';
-import type { Task, JwtPayload } from '@fambiz/types';
+import type { GroupMember, Task, JwtPayload } from '@fambiz/types';
 
 interface SearchPageProps {
   searchParams: Promise<{
     keyword?: string;
     status?: string;
     category?: string;
+    assigneeId?: string;
   }>;
 }
 
 // タスク検索ページ（サーバーコンポーネント）
 export default async function TaskSearchPage({ searchParams }: SearchPageProps) {
-  const { keyword, status, category } = await searchParams;
+  const { keyword, status, category, assigneeId } = await searchParams;
 
   const supabase = await createServerClient();
   const {
@@ -27,20 +28,27 @@ export default async function TaskSearchPage({ searchParams }: SearchPageProps) 
     return null;
   }
 
-  // JWTペイロードからfamily_group_idを取得する
+  // JWTペイロードからfamily_group_idとロールを取得する
+  let role: string | null = null;
   let familyGroupId: string | null = null;
+  let userId: string | null = null;
 
   try {
     const payload = JSON.parse(
       atob(session.access_token.split('.')[1]),
     ) as Partial<JwtPayload>;
+    role = payload.role ?? null;
     familyGroupId = payload.family_group_id ?? null;
+    userId = payload.sub ?? null;
   } catch {
     // JWTのパースに失敗した場合はuser_metadataからフォールバックする
     const metadata = session.user.user_metadata as {
+      role?: string;
       family_group_id?: string;
     };
+    role = metadata.role ?? null;
     familyGroupId = metadata.family_group_id ?? null;
+    userId = session.user.id;
   }
 
   // グループ未参加の場合はメッセージを表示する
@@ -81,11 +89,28 @@ export default async function TaskSearchPage({ searchParams }: SearchPageProps) 
     );
   }
 
+  // 親ユーザーの場合は子メンバー一覧を取得する（担当者フィルタUI用）
+  let childMembers: GroupMember[] = [];
+  if (role === 'parent') {
+    try {
+      const allMembers = await apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`);
+      childMembers = allMembers.filter((m) => m.user?.role === 'child');
+    } catch {
+      // メンバー取得失敗時は空のリストとして扱う
+    }
+  }
+
+  // 有効な担当者IDを決定する
+  // 子ロールの場合: 自分のID（APIサーバー側でも強制するがフロントでも明示する）
+  // 親ロールの場合: クエリパラメータ assigneeId（未指定なら全員表示）
+  const effectiveAssigneeId = role === 'child' ? userId : (assigneeId ?? '');
+
   // クエリパラメータからAPIリクエストURLを組み立てる
   const queryParams = new URLSearchParams({ groupId: familyGroupId });
   if (keyword) queryParams.set('keyword', keyword);
   if (status) queryParams.set('status', status);
   if (category) queryParams.set('category', category);
+  if (effectiveAssigneeId) queryParams.set('assigneeId', effectiveAssigneeId);
 
   // タスク一覧をAPIから取得する
   let tasks: Task[] = [];
@@ -97,17 +122,21 @@ export default async function TaskSearchPage({ searchParams }: SearchPageProps) 
   }
 
   // 現在のフィルタ値を検索フォームの初期値として渡す
-  const defaultValues = { keyword, status, category };
+  const defaultValues = { keyword, status, category, assigneeId };
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-black mb-6">タスク検索</h2>
 
       {/* 検索フォーム（クライアントコンポーネント） */}
-      <TaskSearchForm defaultValues={defaultValues} />
+      <TaskSearchForm
+        defaultValues={defaultValues}
+        childMembers={childMembers}
+        role={role}
+      />
 
       {/* 検索結果テーブル */}
-      <TaskSearchResults tasks={tasks} />
+      <TaskSearchResults tasks={tasks} role={role} />
     </div>
   );
 }

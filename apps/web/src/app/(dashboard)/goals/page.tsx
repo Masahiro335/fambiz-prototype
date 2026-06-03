@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { createServerClient } from '@/lib/supabase/server';
 import { apiFetch } from '@/lib/api/fetcher';
 import { GoalList } from './_components/GoalList';
-import type { Goal, JwtPayload, Task } from '@fambiz/types';
+import { AssigneeFilter } from '@/components/AssigneeFilter';
+import type { Goal, GroupMember, JwtPayload, Task } from '@fambiz/types';
 
 // JST（UTC+9）の現在月を YYYY-MM 形式で返す
 function getDefaultMonth(): string {
@@ -12,7 +14,13 @@ function getDefaultMonth(): string {
 }
 
 // 目標一覧ページ（Server Component）
-export default async function GoalsPage() {
+export default async function GoalsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ assigneeId?: string }>;
+}) {
+  const { assigneeId } = await searchParams;
+
   // 当月（JST）をデフォルトの対象月とする
   const currentMonth = getDefaultMonth();
 
@@ -29,6 +37,7 @@ export default async function GoalsPage() {
   // JWTペイロードからユーザーのロールとfamily_group_idを取得する
   let role: string | null = null;
   let familyGroupId: string | null = null;
+  let userId: string | null = null;
 
   try {
     const payload = JSON.parse(
@@ -36,6 +45,7 @@ export default async function GoalsPage() {
     ) as Partial<JwtPayload>;
     role = payload.role ?? null;
     familyGroupId = payload.family_group_id ?? null;
+    userId = payload.sub ?? null;
   } catch {
     // JWTのパースに失敗した場合はuser_metadataからフォールバックする
     const metadata = session.user.user_metadata as {
@@ -44,6 +54,7 @@ export default async function GoalsPage() {
     };
     role = metadata.role ?? null;
     familyGroupId = metadata.family_group_id ?? null;
+    userId = session.user.id;
   }
 
   // グループ未参加の場合はメッセージを表示する
@@ -84,12 +95,34 @@ export default async function GoalsPage() {
     );
   }
 
+  // 親ユーザーの場合は子メンバー一覧を取得する（担当者フィルタUI用）
+  let childMembers: GroupMember[] = [];
+  if (role === 'parent') {
+    try {
+      const allMembers = await apiFetch<GroupMember[]>(`/v1/groups/${familyGroupId}/members`);
+      childMembers = allMembers.filter((m) => m.user?.role === 'child');
+    } catch {
+      // メンバー取得失敗時は空のリストとして扱う
+    }
+  }
+
+  // 有効な担当者IDを決定する
+  // 子ロールの場合: 自分のID（APIサーバー側でも強制するがフロントでも明示する）
+  // 親ロールの場合: クエリパラメータ assigneeId（未指定なら全員表示）
+  const effectiveAssigneeId = role === 'child' ? userId : (assigneeId ?? '');
+
   // 当月の目標一覧を取得する
+  const queryParams = new URLSearchParams({
+    groupId: familyGroupId,
+    targetMonth: currentMonth,
+  });
+  if (effectiveAssigneeId) {
+    queryParams.set('assigneeId', effectiveAssigneeId);
+  }
+
   let goals: Goal[] = [];
   try {
-    goals = await apiFetch<Goal[]>(
-      `/v1/goals?groupId=${familyGroupId}&targetMonth=${currentMonth}`,
-    );
+    goals = await apiFetch<Goal[]>(`/v1/goals?${queryParams.toString()}`);
   } catch {
     // APIエラー時は空のリストとして扱う（エラー境界に委譲しない）
     goals = [];
@@ -109,7 +142,7 @@ export default async function GoalsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-black">目標</h2>
         {/* 親ユーザーのみ「目標を登録」ボタンを表示する */}
         {role === 'parent' && (
@@ -121,6 +154,19 @@ export default async function GoalsPage() {
           </Link>
         )}
       </div>
+
+      {/* 親ユーザーかつ子メンバーがいる場合のみ担当者フィルタを表示する */}
+      {role === 'parent' && childMembers.length > 0 && (
+        <div className="mb-4">
+          <Suspense fallback={<div className="h-9 w-48 bg-gray-200 rounded animate-pulse" />}>
+            <AssigneeFilter
+              childMembers={childMembers}
+              selectedAssigneeId={assigneeId ?? ''}
+              basePath="/goals"
+            />
+          </Suspense>
+        </div>
+      )}
 
       {/* 対象月の表示 */}
       <p className="text-sm text-gray-500 mb-4">

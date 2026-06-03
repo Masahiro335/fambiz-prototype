@@ -33,6 +33,7 @@ export function CreateGoalForm({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskAssigneeError, setTaskAssigneeError] = useState<string | null>(null);
 
   // 担当者の選択肢（子ユーザーのみ）
   const childMembers = members.filter((m) => m.user?.role === 'child');
@@ -45,6 +46,12 @@ export function CreateGoalForm({
     // バリデーション: 目標名は必須
     if (!goalName.trim()) {
       setErrorMessage('目標名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 担当者は必須
+    if (childMembers.length > 0 && !assigneeId) {
+      setErrorMessage('担当者を選択してください。');
       return;
     }
 
@@ -135,9 +142,11 @@ export function CreateGoalForm({
       {showTaskModal && (
         <TaskSearchModal
           groupId={groupId}
+          assigneeId={assigneeId || undefined}
           onSelect={(id, name) => {
             setTaskId(id);
             setSelectedTaskName(name);
+            setTaskAssigneeError(null);
             setShowTaskModal(false);
           }}
           onClose={() => setShowTaskModal(false)}
@@ -183,7 +192,15 @@ export function CreateGoalForm({
             </div>
             <button
               type="button"
-              onClick={() => setShowTaskModal(true)}
+              onClick={() => {
+                // 担当者が未選択の場合はインラインエラーを表示してモーダルを開かない
+                if (childMembers.length > 0 && !assigneeId) {
+                  setTaskAssigneeError('先に担当者を選択してください');
+                  return;
+                }
+                setTaskAssigneeError(null);
+                setShowTaskModal(true);
+              }}
               className="px-4 py-2.5 bg-white text-blue-600 text-sm font-medium rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors whitespace-nowrap"
             >
               タスク検索
@@ -191,7 +208,7 @@ export function CreateGoalForm({
             {taskId && (
               <button
                 type="button"
-                onClick={() => { setTaskId(''); setSelectedTaskName(''); }}
+                onClick={() => { setTaskId(''); setSelectedTaskName(''); setTaskAssigneeError(null); }}
                 className="px-3 py-2.5 text-gray-400 hover:text-gray-600 text-sm transition-colors"
                 title="クリア"
               >
@@ -199,6 +216,9 @@ export function CreateGoalForm({
               </button>
             )}
           </div>
+          {taskAssigneeError && (
+            <p className="mt-1 text-xs text-red-600">{taskAssigneeError}</p>
+          )}
         </div>
 
         {/* 対象月 */}
@@ -238,19 +258,27 @@ export function CreateGoalForm({
           </div>
         </div>
 
-        {/* 担当者（子ユーザーのみ選択可能） */}
+        {/* 担当者（子ユーザーのみ選択可能・必須） */}
         {childMembers.length > 0 && (
           <div>
             <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700 mb-1">
-              担当者
+              担当者 <span className="text-red-500">*</span>
             </label>
             <select
               id="assigneeId"
               value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
+              onChange={(e) => {
+                setAssigneeId(e.target.value);
+                // 担当者を変更したらタスク選択をクリアする（担当者不整合を防ぐ）
+                if (taskId) {
+                  setTaskId('');
+                  setSelectedTaskName('');
+                }
+                setTaskAssigneeError(null);
+              }}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              <option value="">未設定</option>
+              <option value="">担当者を選択してください</option>
               {childMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.user?.name ?? m.user_id}
