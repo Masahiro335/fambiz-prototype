@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GoalsService } from './goals.service';
 import { GoalsRepository } from './goals.repository';
+import { TasksRepository } from '../tasks/tasks.repository';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { UpdateGoalStatusDto } from './dto/update-goal-status.dto';
@@ -18,6 +19,15 @@ const mockGoalsRepository = {
   update: jest.fn(),
   delete: jest.fn(),
   updateStatus: jest.fn(),
+};
+
+// =========================================================================
+// TasksRepository のモック（担当者検証で使用）
+// =========================================================================
+
+const mockTasksRepository = {
+  isMemberOfGroup: jest.fn(),
+  findTaskAssignee: jest.fn(),
 };
 
 // =========================================================================
@@ -74,6 +84,10 @@ describe('GoalsService', () => {
           provide: GoalsRepository,
           useValue: mockGoalsRepository,
         },
+        {
+          provide: TasksRepository,
+          useValue: mockTasksRepository,
+        },
       ],
     }).compile();
 
@@ -101,8 +115,8 @@ describe('GoalsService', () => {
       const result = await service.findAll(groupId, parentUser);
 
       expect(result).toEqual(mockGoals);
-      // 正しい引数でリポジトリが呼ばれること
-      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, undefined);
+      // 正しい引数でリポジトリが呼ばれること（assigneeId は未指定なので undefined）
+      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, undefined, undefined);
     });
 
     it('子ユーザーが自グループの目標一覧を取得できること', async () => {
@@ -111,7 +125,8 @@ describe('GoalsService', () => {
       const result = await service.findAll(groupId, childUser);
 
       expect(result).toEqual(mockGoals);
-      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, undefined);
+      // 子ロールは自分の user.sub で強制フィルタされること
+      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, undefined, childUser.sub);
     });
 
     it('対象月フィルタを指定して目標一覧を取得できること', async () => {
@@ -121,7 +136,7 @@ describe('GoalsService', () => {
 
       expect(result).toEqual(mockGoals);
       // フィルタが正しく渡されること
-      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, '2026-05');
+      expect(mockGoalsRepository.findAll).toHaveBeenCalledWith(groupId, '2026-05', undefined);
     });
 
     it('groupId が user.family_group_id と一致しない場合は ForbiddenException をスロー', async () => {
@@ -195,7 +210,8 @@ describe('GoalsService', () => {
     };
 
     it('正常に目標を作成できること', async () => {
-      // リポジトリが目標を返すよう設定
+      // assigneeId が指定されているため isMemberOfGroup が呼ばれる → グループ内メンバーとして返す
+      mockTasksRepository.isMemberOfGroup.mockResolvedValue(true);
       mockGoalsRepository.create.mockResolvedValue(mockGoal);
 
       const result = await service.createGoal(createGoalDto, parentUser);
