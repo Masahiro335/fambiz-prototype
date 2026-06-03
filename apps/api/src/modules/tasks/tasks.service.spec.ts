@@ -521,7 +521,10 @@ describe('TasksService', () => {
         pendingTask.assignee_id,
         pendingTask.reward_amount,
       );
-      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(taskId, parentUser.sub);
+      expect(mockTasksRepository.approveTaskCompletion).toHaveBeenCalledWith(
+        taskId,
+        parentUser.sub,
+      );
       expect(mockTasksRepository.cancelTaskCompletion).not.toHaveBeenCalled();
     });
 
@@ -545,7 +548,10 @@ describe('TasksService', () => {
     it('タスクの start_time 月の報酬が paid 済みの場合、承認（reported → completed）で BadRequestException をスローすること', async () => {
       const dto: UpdateTaskStatusDto = { status: 'completed' };
       // start_time が 2026-05（paid月）のタスク
-      const reportedTaskWithStartTime: Task = { ...reportedTask, start_time: '2026-05-15T00:00:00Z' };
+      const reportedTaskWithStartTime: Task = {
+        ...reportedTask,
+        start_time: '2026-05-15T00:00:00Z',
+      };
       mockTasksRepository.findById.mockResolvedValue(reportedTaskWithStartTime);
       mockRewardsRepository.findByChildAndMonth.mockResolvedValue({ status: 'paid' });
 

@@ -408,7 +408,7 @@ export class TasksRepository {
       throw new InternalServerErrorException('タスクの担当者取得に失敗しました');
     }
 
-    return data?.assignee_id ?? null;
+    return (data?.assignee_id ?? null) as string | null;
   }
 
   /**

@@ -43,7 +43,7 @@ export class GoalsRepository {
     let query = this.db
       .from('goals')
       .select(
-        'id, group_id, creator_id, assignee_id, task_id, goal_name, goal_reward, target_count, action, and_condition_flag, status, target_month, created_at, updated_at',
+        'id, group_id, creator_id, assignee_id, task_id, goal_name, goal_reward, target_count, action, and_condition_flag, status, target_month, created_at, updated_at, assignee:users!assignee_id(id, email, name, role, avatar_url, comment, created_at, updated_at)',
       )
       // 家族グループ分離: 自グループの目標のみ取得する
       .eq('group_id', groupId)
@@ -66,7 +66,7 @@ export class GoalsRepository {
       throw new InternalServerErrorException('目標一覧の取得に失敗しました');
     }
 
-    return data ?? [];
+    return (data ?? []) as unknown as Goal[];
   }
 
   /**

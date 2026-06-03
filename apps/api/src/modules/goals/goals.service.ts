@@ -33,7 +33,12 @@ export class GoalsService {
    * @param targetMonth - 対象月フィルタ（YYYY-MM形式・任意）
    * @returns 目標の配列
    */
-  async findAll(groupId: string, user: JwtPayload, targetMonth?: string, assigneeId?: string): Promise<Goal[]> {
+  async findAll(
+    groupId: string,
+    user: JwtPayload,
+    targetMonth?: string,
+    assigneeId?: string,
+  ): Promise<Goal[]> {
     // 自分が所属するグループ以外の目標参照を禁止する
     if (groupId !== user.family_group_id) {
       throw new ForbiddenException('他の家族グループの目標は参照できません');
@@ -92,7 +97,10 @@ export class GoalsService {
 
     // taskId が指定されている場合、タスクの担当者と目標の担当者が一致するか検証する
     if (dto.taskId && dto.assigneeId) {
-      const taskAssigneeId = await this.tasksRepository.findTaskAssignee(dto.taskId, user.family_group_id);
+      const taskAssigneeId = await this.tasksRepository.findTaskAssignee(
+        dto.taskId,
+        user.family_group_id,
+      );
       if (taskAssigneeId !== null && taskAssigneeId !== dto.assigneeId) {
         throw new BadRequestException({
           message: 'タスクの担当者と目標の担当者が一致しません',
@@ -131,7 +139,10 @@ export class GoalsService {
   async updateGoal(goalId: string, dto: UpdateGoalDto, user: JwtPayload): Promise<Goal> {
     // assigneeId が指定されている場合、同一ファミリーグループに属するか検証する
     if (dto.assigneeId) {
-      const isMember = await this.tasksRepository.isMemberOfGroup(dto.assigneeId, user.family_group_id);
+      const isMember = await this.tasksRepository.isMemberOfGroup(
+        dto.assigneeId,
+        user.family_group_id,
+      );
       if (!isMember) {
         throw new ForbiddenException('指定された担当者は同一ファミリーグループに属していません');
       }
@@ -146,7 +157,10 @@ export class GoalsService {
         effectiveAssigneeId = currentGoal?.assignee_id ?? undefined;
       }
       if (effectiveAssigneeId) {
-        const taskAssigneeId = await this.tasksRepository.findTaskAssignee(dto.taskId, user.family_group_id);
+        const taskAssigneeId = await this.tasksRepository.findTaskAssignee(
+          dto.taskId,
+          user.family_group_id,
+        );
         if (taskAssigneeId !== null && taskAssigneeId !== effectiveAssigneeId) {
           throw new BadRequestException({
             message: 'タスクの担当者と目標の担当者が一致しません',

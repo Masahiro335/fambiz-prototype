@@ -62,6 +62,14 @@ export function GoalCard({ goal, progressRate, taskName }: GoalCardProps) {
           {/* 対象月 */}
           <p className="text-xs text-gray-400 mt-1">{targetMonthLabel}</p>
 
+          {/* 担当者名（担当者が設定されている場合のみ表示） */}
+          {goal.assignee && (
+            <p className="text-xs text-gray-500 mt-1">
+              担当:{' '}
+              <span className="font-medium text-gray-700">{goal.assignee.name}</span>
+            </p>
+          )}
+
           {/* タスク名（紐づくタスクがある場合のみ表示） */}
           {taskName && (
             <p className="text-xs text-gray-500 mt-1">

@@ -93,7 +93,14 @@ export class TasksService {
     // 子ロールの場合は自分のタスクのみ参照可能（assigneeId を強制的に user.sub で上書き）
     const effectiveAssigneeId = user.role === 'child' ? user.sub : assigneeId;
 
-    return this.tasksRepository.findAll({ groupId, status, assigneeId: effectiveAssigneeId, keyword, month, category });
+    return this.tasksRepository.findAll({
+      groupId,
+      status,
+      assigneeId: effectiveAssigneeId,
+      keyword,
+      month,
+      category,
+    });
   }
 
   /**
@@ -283,7 +290,11 @@ export class TasksService {
             `${targetMonth} の報酬は支払い済みのため、即時完了はできません。来月以降に実施してください`,
           );
         }
-        await this.tasksRepository.createTaskCompletion(taskId, currentTask.assignee_id, currentTask.reward_amount);
+        await this.tasksRepository.createTaskCompletion(
+          taskId,
+          currentTask.assignee_id,
+          currentTask.reward_amount,
+        );
         await this.tasksRepository.approveTaskCompletion(taskId, user.sub);
       }
     }
