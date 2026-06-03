@@ -209,6 +209,7 @@ export function TaskSearchModal({ groupId, assigneeId, onSelect, onClose }: Task
                 <tr className="bg-gray-50 border-b sticky top-0">
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">タスク名</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">分類</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-gray-600">担当者名</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">ステータス</th>
                   <th className="text-left px-4 py-2.5 font-medium text-gray-600">期日</th>
                   <th className="text-right px-4 py-2.5 font-medium text-gray-600">報酬</th>
@@ -245,6 +246,9 @@ export function TaskSearchModal({ groupId, assigneeId, onSelect, onClose }: Task
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {task.assignee?.name ?? <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
                         <span

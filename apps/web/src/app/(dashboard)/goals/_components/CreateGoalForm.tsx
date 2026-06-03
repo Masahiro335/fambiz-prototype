@@ -179,6 +179,36 @@ export function CreateGoalForm({
           />
         </div>
 
+        {/* 担当者（子ユーザーのみ選択可能・必須） */}
+        {childMembers.length > 0 && (
+          <div>
+            <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700 mb-1">
+              担当者 <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="assigneeId"
+              value={assigneeId}
+              onChange={(e) => {
+                setAssigneeId(e.target.value);
+                // 担当者を変更したらタスク選択をクリアする（担当者不整合を防ぐ）
+                if (taskId) {
+                  setTaskId('');
+                  setSelectedTaskName('');
+                }
+                setTaskAssigneeError(null);
+              }}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">担当者を選択してください</option>
+              {childMembers.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user?.name ?? m.user_id}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* タスク名（タスク検索モーダルで選択） */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">タスク名</label>
@@ -257,36 +287,6 @@ export function CreateGoalForm({
             </span>
           </div>
         </div>
-
-        {/* 担当者（子ユーザーのみ選択可能・必須） */}
-        {childMembers.length > 0 && (
-          <div>
-            <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700 mb-1">
-              担当者 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="assigneeId"
-              value={assigneeId}
-              onChange={(e) => {
-                setAssigneeId(e.target.value);
-                // 担当者を変更したらタスク選択をクリアする（担当者不整合を防ぐ）
-                if (taskId) {
-                  setTaskId('');
-                  setSelectedTaskName('');
-                }
-                setTaskAssigneeError(null);
-              }}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="">担当者を選択してください</option>
-              {childMembers.map((m) => (
-                <option key={m.user_id} value={m.user_id}>
-                  {m.user?.name ?? m.user_id}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* 目標回数（定量目標） */}
         <div>
