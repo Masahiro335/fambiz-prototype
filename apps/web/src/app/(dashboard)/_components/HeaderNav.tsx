@@ -46,8 +46,8 @@ const buildNavItems = (isParent: boolean): NavItem[] => [
   },
   {
     label: '記事',
-    href: null,
-    subItems: [{ label: '記事一覧', href: '#', disabled: true }],
+    href: '/articles',
+    subItems: [{ label: '記事一覧', href: '/articles' }],
   },
   {
     label: '家族',

@@ -57,7 +57,7 @@ export default async function DashboardPage() {
     },
     {
       title: '記事',
-      buttons: [{ label: '記事一覧', href: '#', disabled: true }],
+      buttons: [{ label: '記事一覧', href: '/articles' }],
     },
     {
       title: '家族',
