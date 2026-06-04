@@ -55,7 +55,6 @@ const buildNavItems = (isParent: boolean): NavItem[] => [
     subItems: [
       { label: 'メンバー一覧', href: '/family' },
       { label: 'メンバー招待', href: '/family/invite', parentOnly: true },
-      { label: 'メンバー詳細', href: '/family', disabled: true },
     ].filter((item) => !item.parentOnly || isParent),
   },
 ];
