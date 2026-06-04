@@ -196,6 +196,17 @@
 
 ---
 
+## 記事機能（フロントのみ・APIなし）
+
+<!-- 静的データをファイル内に定義。バックエンドAPIは不要 -->
+
+- [x] `src/lib/articles.ts` — 型定義・静的データ・取得関数
+- [x] `SCR-ARTICLE-001` — 記事一覧画面・カテゴリフィルター
+- [x] `CategoryFilter.tsx` — フィルターボタン（Client Component）
+- [x] `SCR-ARTICLE-002` — 記事詳細画面
+
+---
+
 ## Phase 7: E2Eテスト・品質保証
 
 - [ ] 🟢 主要フローのE2Eテスト（Playwright or Cypress）

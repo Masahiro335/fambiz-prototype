@@ -17,7 +17,7 @@
 ```mermaid
 flowchart LR
     A([登録画面\nSCR-AUTH-001]) --> B([ログイン画面\nSCR-AUTH-002])
-    B --> C([プロフィール登録画面\nSCR-AUTH-004])
+    B --> C([プロフィール登録画面\nSCR-AUTH-003])
     C --> D([メニュー画面\nSCR-TOP-001])
     B -.->|パスワードを忘れた| E([パスワードリセット画面\n本番のみ])
     E --> B
@@ -38,7 +38,8 @@ flowchart TD
     TOP --> G2([目標新規登録\nSCR-GOAL-003])
     TOP --> R1([報酬管理\nSCR-REWARD-001])
     TOP --> R2([報酬グラフ\nSCR-REWARD-002])
-    TOP --> A1([記事一覧\n本番のみ])
+    TOP --> A1([記事一覧\nSCR-ARTICLE-001])
+    A1 --> A2([記事詳細\nSCR-ARTICLE-002])
     TOP --> F1([家族メンバー一覧\nSCR-GROUP-001])
     TOP --> F3([家族グループ招待\nSCR-GROUP-003])
 ```
@@ -122,15 +123,12 @@ flowchart TD
 
 ```mermaid
 flowchart LR
+    %% 各種設定（SCR-SETTING-001）は未実装。プロフィール編集・パスワード変更は本番のみ対応予定
     H([ヘッダー\nSCR-HEADER-001])
-    H -->|アイコンメニュー → 各種設定| S([各種設定\nSCR-SETTING-001])
     H -->|アイコンメニュー → ログアウト| LG([ログイン画面\nSCR-AUTH-002])
     H -->|ベルアイコン| N([お知らせ一覧\n本番のみ])
     H -->|報酬メニュー → 月次報酬分析| R1([報酬管理\nSCR-REWARD-001])
     H -->|報酬メニュー → 年次報酬分析| R2([報酬グラフ\nSCR-REWARD-002])
-
-    S --> SP([プロフィール登録\nSCR-AUTH-004])
-    S --> PW([パスワード変更\nSCR-AUTH-003])
 ```
 
 ---
@@ -154,8 +152,8 @@ flowchart TD
     subgraph AUTH[認証]
         A001([新規登録\nSCR-AUTH-001])
         A002([ログイン\nSCR-AUTH-002])
-        A003([PW変更\nSCR-AUTH-003])
-        A004([プロフィール登録\nSCR-AUTH-004])
+        A003([プロフィール登録\nSCR-AUTH-003])
+        A005([PW変更\nSCR-AUTH-005])
     end
 
     subgraph MAIN[メイン]
@@ -190,12 +188,14 @@ flowchart TD
         GR005([脱退\nSCR-GROUP-005])
     end
 
-    subgraph SETTING[設定]
-        S001([各種設定\nSCR-SETTING-001])
+    subgraph ARTICLE[記事]
+        AR001([一覧\nSCR-ARTICLE-001])
+        AR002([詳細\nSCR-ARTICLE-002])
     end
 
-    A001 --> A002 --> A004 --> TOP
-    TOP --> T001 & T003 & G001 & G003 & R001 & R002 & GR001 & GR003
+    %% SCR-SETTING-001（各種設定）は未実装のため除外
+    A001 --> A002 --> A003 --> TOP
+    TOP --> T001 & T003 & G001 & G003 & R001 & R002 & GR001 & GR003 & AR001
     T001 --> T002 & T005
     T002 --> T004
     G001 --> G002 & G003
@@ -203,5 +203,5 @@ flowchart TD
     GR001 --> GR002 & GR003 & GR005
     GR005 --> GR001
     GR003 -.-> GR004
-    S001 --> A004 & A003
+    AR001 --> AR002
 ```
