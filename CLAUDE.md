@@ -24,7 +24,8 @@ fambiz-prototype/
 │   └── skills/       # 再利用スキル定義（実装規約・セキュリティチェック）
 ├── apps/             # モノレポ内のアプリケーション群
 │   ├── web/          # Next.js 14 フロントエンド（Vercel）
-│   └── api/          # NestJS バックエンド（Render）
+│   ├── api/          # NestJS バックエンド（Render）
+│   └── e2e/          # Playwright E2Eテスト（主要フロー3本）
 ├── packages/         # モノレポ内で共有するパッケージ群
 │   ├── types/        # フロント・バック共有のTypeScript型定義
 │   ├── eslint-config/ # ESLint設定
@@ -193,8 +194,17 @@ pnpm build
 # lint（全パッケージ）
 pnpm lint
 
-# テスト（全パッケージ）
+# テスト（全パッケージ Unit Test）
 pnpm test
+
+# E2Eテスト（pnpm dev で開発サーバー起動後に実行）
+pnpm test:e2e
+
+# E2Eテスト UI モード（インタラクティブ確認）
+pnpm --filter @fambiz/e2e test:e2e:ui
+
+# Playwright ブラウザのインストール（初回のみ）
+pnpm --filter @fambiz/e2e install:browsers
 
 # Supabaseマイグレーション実行
 pnpm supabase db push
