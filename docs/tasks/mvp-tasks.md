@@ -209,11 +209,11 @@
 
 ## Phase 7: E2Eテスト・品質保証
 
-- [ ] 🟢 主要フローのE2Eテスト（Playwright or Cypress）
+- [x] 🟢 主要フローのE2Eテスト（Playwright）
   - タスク登録→報告→承認→報酬確定フロー
   - 目標設定→挑戦→達成判定フロー
   - QRコード招待→参加フロー
-- [ ] 🟢 NestJSモジュールのUnit Test（Jest）
+- [x] 🟢 NestJSモジュールのUnit Test（Jest）
 - [ ] 🟢 Storybookでコンポーネントカタログ作成
 
 ---
