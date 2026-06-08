@@ -58,7 +58,7 @@ export function RewardCompletionsTable({ completions }: RewardCompletionsTablePr
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="min-w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b">
               <th className="text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">
@@ -85,7 +85,7 @@ export function RewardCompletionsTable({ completions }: RewardCompletionsTablePr
                 <td className="px-4 py-3 text-gray-800 font-medium">{row.task_name}</td>
 
                 {/* 報酬（タスク単価×完了数の合計） */}
-                <td className="px-4 py-3 text-right text-gray-800">
+                <td className="px-4 py-3 text-right text-gray-800 whitespace-nowrap">
                   {row.taskReward.toLocaleString('ja-JP')}
                   <span className="text-xs text-gray-400 ml-0.5">円</span>
                 </td>

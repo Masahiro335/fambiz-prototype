@@ -44,6 +44,11 @@ export class RewardsService {
       throw new ForbiddenException('他の家族グループの報酬は参照できません');
     }
 
+    // 子ロールは自分自身の childId のみ参照可能（他の子の報酬への横断アクセスを禁止する）
+    if (user.role === 'child' && childId !== user.sub) {
+      throw new ForbiddenException('他のメンバーの報酬は参照できません');
+    }
+
     // 既存の報酬レコードを検索する
     const existing = await this.rewardsRepository.findByChildAndMonth(childId, targetMonth);
 
@@ -109,6 +114,11 @@ export class RewardsService {
     // 自分が所属するグループ以外の報酬参照を禁止する
     if (groupId !== user.family_group_id) {
       throw new ForbiddenException('他の家族グループの報酬は参照できません');
+    }
+
+    // 子ロールは自分自身の childId のみ参照可能（他の子の報酬への横断アクセスを禁止する）
+    if (user.role === 'child' && childId !== user.sub) {
+      throw new ForbiddenException('他のメンバーの報酬は参照できません');
     }
 
     // 対象月から遡って historyMonths 分の月リストを生成する（例: 6ヶ月分）

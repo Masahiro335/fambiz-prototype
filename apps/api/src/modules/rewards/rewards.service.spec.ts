@@ -193,6 +193,31 @@ describe('RewardsService', () => {
       expect(mockRewardsRepository.create).not.toHaveBeenCalled();
     });
 
+    it('子ロールが他の子の childId を指定した場合は ForbiddenException をスロー', async () => {
+      // childUser.sub = 'child-user-id-001' だが、別の子の ID を指定する
+      const otherChildQuery: GetRewardQueryDto = {
+        groupId,
+        childId: 'child-user-id-002', // 自分以外の子
+        targetMonth: '2026-06',
+      };
+
+      await expect(service.getReward(otherChildQuery, childUser)).rejects.toThrow(ForbiddenException);
+
+      // リポジトリは呼ばれないこと
+      expect(mockRewardsRepository.findByChildAndMonth).not.toHaveBeenCalled();
+    });
+
+    it('子ロールが自分自身の childId を指定した場合は正常に取得できること', async () => {
+      // childUser.sub = 'child-user-id-001' と一致する childId を指定する
+      // paid レコードを返すことで再計算パスを回避し、mock 汚染を防ぐ
+      const paidReward: Reward = { ...mockReward, status: 'paid', paid_at: '2026-06-30T00:00:00Z' };
+      mockRewardsRepository.findByChildAndMonth.mockResolvedValue(paidReward);
+
+      const result = await service.getReward(query, childUser);
+
+      expect(result).toEqual(paidReward);
+    });
+
     it('端数を含む場合は Math.floor で切り捨てて計算すること', async () => {
       mockRewardsRepository.findByChildAndMonth.mockResolvedValue(null);
       // 端数ありの値（実際の切り捨ては Repository 側で行う想定だが、Service での合計計算を確認）
@@ -241,6 +266,21 @@ describe('RewardsService', () => {
       };
 
       await expect(service.getRewardGraph(query, unauthorizedUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(mockRewardsRepository.findByChildAndMonths).not.toHaveBeenCalled();
+    });
+
+    it('子ロールが他の子の childId を指定した場合は ForbiddenException をスロー', async () => {
+      const otherChildQuery: GetRewardGraphQueryDto = {
+        groupId,
+        childId: 'child-user-id-002', // 自分以外の子
+        targetMonth: '2026-06',
+        historyMonths: 3,
+      };
+
+      await expect(service.getRewardGraph(otherChildQuery, childUser)).rejects.toThrow(
         ForbiddenException,
       );
 
