@@ -1,0 +1,366 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import type { GroupMember, Task } from '@fambiz/types';
+
+// 分類の選択肢
+const CATEGORIES = ['掃除', '料理', '洗濯', 'その他'] as const;
+type Category = (typeof CATEGORIES)[number];
+
+// タスク登録フォームコンポーネント（Client Component）
+export function CreateTaskForm({
+  groupId,
+  paidMonths,
+  members,
+}: {
+  groupId: string;
+  paidMonths: string[];
+  members: GroupMember[];
+}) {
+  const router = useRouter();
+
+  // JSTで今日の日付をYYYY-MM-DD形式で取得する
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+
+  // 担当者（子ユーザー）の選択肢
+  const childMembers = members.filter((m) => m.user?.role === 'child');
+
+  // フォームフィールドの状態
+  const [taskName, setTaskName] = useState('');
+  const [category, setCategory] = useState<Category | ''>('');
+  const [assigneeId, setAssigneeId] = useState('');
+  const [startDate, setStartDate] = useState(today);
+  const [startTime, setStartTime] = useState('00:00');
+  const [endDate, setEndDate] = useState(today);
+  const [endTime, setEndTime] = useState('23:59');
+  const [rewardAmount, setRewardAmount] = useState('');
+  const [memo, setMemo] = useState('');
+  const [isImmediateComplete, setIsImmediateComplete] = useState(false);
+
+  // 選択中の開始月が支払い済みかどうか（YYYY-MM で比較する）
+  const isPaidMonth = paidMonths.includes(startDate.substring(0, 7));
+
+  // UI状態
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // フォーム送信ハンドラ
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    // バリデーション: タスク名は必須
+    if (!taskName.trim()) {
+      setErrorMessage('タスク名を入力してください。');
+      return;
+    }
+
+    // バリデーション: 担当者は必須
+    if (childMembers.length > 0 && !assigneeId) {
+      setErrorMessage('担当者を選択してください。');
+      return;
+    }
+
+    // バリデーション: 開始日時は必須
+    if (!startDate || !startTime) {
+      setErrorMessage('開始日時を入力してください。');
+      return;
+    }
+
+    // バリデーション: 終了日時は必須
+    if (!endDate || !endTime) {
+      setErrorMessage('終了日時を入力してください。');
+      return;
+    }
+
+    // バリデーション: 報酬は必須かつ0以上の整数
+    const rewardNum = parseInt(rewardAmount, 10);
+    if (rewardAmount === '' || isNaN(rewardNum) || rewardNum < 0) {
+      setErrorMessage('報酬には0以上の整数を入力してください。');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // ブラウザ側でSupabaseセッションを取得しアクセストークンを付与する
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        setErrorMessage('セッションが無効です。再ログインしてください。');
+        return;
+      }
+
+      // 開始日時・終了日時をISO 8601形式に変換する（必須項目）
+      const startTimeIso = new Date(`${startDate}T${startTime}:00`).toISOString();
+      const endTimeIso = new Date(`${endDate}T${endTime}:00`).toISOString();
+
+      // リクエストボディを組み立てる（DTOはcamelCase）
+      const requestBody = {
+        groupId,
+        taskName: taskName.trim(),
+        ...(category ? { category } : {}),
+        ...(assigneeId ? { assigneeId } : {}),
+        rewardAmount: rewardNum,
+        startTime: startTimeIso,
+        endTime: endTimeIso,
+        ...(memo.trim() ? { memo: memo.trim() } : {}),
+      };
+
+      // POST /v1/tasks でタスクを作成する
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/tasks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!res.ok) {
+        const errorBody = (await res.json()) as { message?: string | string[] };
+        const message: string =
+          typeof errorBody.message === 'string'
+            ? errorBody.message
+            : Array.isArray(errorBody.message)
+              ? errorBody.message.join(' ')
+              : 'タスクの登録に失敗しました。';
+        setErrorMessage(message);
+        return;
+      }
+
+      // 「既に完了にする」チェック時はステータスを完了に変更する
+      if (isImmediateComplete) {
+        const createdTask = (await res.json()) as Task;
+        const statusRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/v1/tasks/${createdTask.id}/status`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ status: 'completed' }),
+          },
+        );
+
+        if (!statusRes.ok) {
+          const errorBody = (await statusRes.json()) as { message?: string | string[] };
+          const message: string =
+            typeof errorBody.message === 'string'
+              ? errorBody.message
+              : Array.isArray(errorBody.message)
+                ? errorBody.message.join(' ')
+                : 'ステータスの更新に失敗しました。';
+          setErrorMessage(message);
+          return;
+        }
+      }
+
+      // 登録成功後はタスク一覧へ遷移する
+      router.push('/tasks');
+      router.refresh();
+    } catch {
+      setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border p-6 max-w-lg">
+      <h2 className="text-xl font-bold text-gray-800 mb-6">タスクを登録する</h2>
+
+      {/* エラーメッセージ表示エリア */}
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600">{errorMessage}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* タスク名 */}
+        <div>
+          <label htmlFor="taskName" className="block text-sm font-medium text-gray-700 mb-1">
+            タスク名 <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="taskName"
+            type="text"
+            required
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            placeholder="例：部屋の掃除"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        {/* 担当者（子ユーザーがいる場合のみ表示） */}
+        {childMembers.length > 0 && (
+          <div>
+            <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700 mb-1">
+              担当者 <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="assigneeId"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              required
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            >
+              <option value="">担当者を選択してください</option>
+              {childMembers.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user?.name ?? m.user_id}（{m.user?.role ?? 'child'}）
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* 分類（ボタン選択） */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">分類</p>
+          <div className="flex gap-2 flex-wrap">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(category === cat ? '' : cat)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  category === cat
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 開始日時 */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">開始日時 <span className="text-red-500">*</span></p>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (e.target.value && !startTime) setStartTime('00:00');
+                if (paidMonths.includes(e.target.value.substring(0, 7))) setIsImmediateComplete(false);
+              }}
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-32 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* 終了日時 */}
+        <div>
+          <p className="block text-sm font-medium text-gray-700 mb-2">終了日時 <span className="text-red-500">*</span></p>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (e.target.value && !endTime) setEndTime('23:59');
+              }}
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="w-32 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* 報酬 */}
+        <div>
+          <label htmlFor="rewardAmount" className="block text-sm font-medium text-gray-700 mb-1">
+            報酬（円） <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              id="rewardAmount"
+              type="number"
+              min={0}
+              required
+              value={rewardAmount}
+              onChange={(e) => setRewardAmount(e.target.value)}
+              placeholder="例：300"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+              円
+            </span>
+          </div>
+        </div>
+
+        {/* メモ */}
+        <div>
+          <label htmlFor="memo" className="block text-sm font-medium text-gray-700 mb-1">
+            メモ
+          </label>
+          <textarea
+            id="memo"
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="補足説明があれば記入してください"
+            rows={3}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          />
+        </div>
+
+        {/* 既に完了にする（支払い済み月は非表示） */}
+        {!isPaidMonth && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <input
+              id="isImmediateComplete"
+              type="checkbox"
+              checked={isImmediateComplete}
+              onChange={(e) => setIsImmediateComplete(e.target.checked)}
+              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+            />
+            <label htmlFor="isImmediateComplete" className="text-sm font-medium text-green-700 cursor-pointer">
+              既に完了にする
+            </label>
+          </div>
+        )}
+
+        {/* ボタン群 */}
+        <div className="flex gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? '登録中...' : '登録する'}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/tasks')}
+            disabled={isLoading}
+            className="flex-1 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            閉じる
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

@@ -1,0 +1,131 @@
+name: Deploy Web (Vercel)
+
+on:
+  push:
+    branches:
+      - release
+
+# 同時デプロイを防ぐ（キャンセルではなくキューイング）
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ────────────────────────────────────────────
+  # Job 1: CI チェック（デプロイ前の安全確認）
+  # ────────────────────────────────────────────
+  pre-deploy-check:
+    name: Pre-deploy Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Cache Turborepo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-web-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-web-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm build
+
+      - name: Unit test
+        run: pnpm test
+
+  # ────────────────────────────────────────────
+  # Job 2: Vercel 本番デプロイ
+  # ────────────────────────────────────────────
+  deploy:
+    name: Deploy to Vercel (Production)
+    needs: pre-deploy-check
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel
+
+      # Vercel プロジェクト設定を取得（.vercel/project.json を生成）
+      - name: Pull Vercel environment
+        working-directory: apps/web
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Vercel のビルドパイプラインで Next.js をビルド
+      - name: Build project artifacts
+        working-directory: apps/web
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # ビルド済みアーティファクトを本番にデプロイ
+      - name: Deploy to production
+        id: deploy
+        working-directory: apps/web
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> $GITHUB_OUTPUT
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment deploy URL on commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const sha = context.sha.slice(0, 7);
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `🚀 **Web デプロイ完了** (${sha})\n\n${url}`,
+            });
+
+  # ────────────────────────────────────────────
+  # 必要シークレット（GitHub Secrets に登録）
+  # ────────────────────────────────────────────
+  # VERCEL_TOKEN       : Vercel > Settings > Tokens で発行
+  # VERCEL_ORG_ID      : vercel link 後の .vercel/project.json に記載
+  # VERCEL_PROJECT_ID  : 同上

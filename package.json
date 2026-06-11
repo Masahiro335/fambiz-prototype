@@ -1,0 +1,26 @@
+{
+  "name": "fambiz",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @fambiz/e2e test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "type-check": "turbo run type-check",
+    "supabase:push": "cd infra && supabase db push",
+    "supabase:seed": "cd infra && supabase db query --file supabase/seed/seed.sql",
+    "supabase:reset": "cd infra && supabase db reset"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}

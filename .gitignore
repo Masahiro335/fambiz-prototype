@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+.next
+out
+build
+*.tsbuildinfo
+
+# Turbo
+.turbo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Storybook
+storybook-static
+
+# Testing
+coverage
+# Playwright
+apps/e2e/tests/.auth/
+apps/e2e/playwright-report/
+apps/e2e/test-results/
+test-results/
+chrome/
+
+# Supabase
+**/supabase/.temp

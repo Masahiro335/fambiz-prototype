@@ -1,0 +1,439 @@
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  createClient,
+  SupabaseClient,
+  SupabaseClientOptions,
+  type WebSocketLikeConstructor,
+} from '@supabase/supabase-js';
+import WebSocket from 'ws';
+import { fromZonedTime } from 'date-fns-tz';
+import type { Task, TaskCompletion, TaskStatus } from '@fambiz/types';
+
+/**
+ * タスク一覧取得のフィルタ条件。
+ */
+export interface FindTasksFilter {
+  groupId: string;
+  status?: TaskStatus;
+  assigneeId?: string;
+  keyword?: string;
+  month?: string; // YYYY-MM形式（FUN-TASK-005）
+  category?: string; // カテゴリ完全一致フィルタ（FUN-TASK-007）
+}
+
+/**
+ * タスクのデータアクセスを担当するリポジトリ。
+ * Supabase（service_role）を使って tasks テーブルを操作する。
+ */
+@Injectable()
+export class TasksRepository {
+  /**
+   * DBクエリ専用クライアント（service_role、RLSバイパス）。
+   */
+  private readonly db: SupabaseClient<any>;
+
+  constructor(private readonly configService: ConfigService) {
+    const url = this.configService.getOrThrow<string>('SUPABASE_URL');
+    const serviceRoleKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+
+    // ws パッケージの WebSocket を Supabase が要求する型に変換（Node.js 20 対応）
+    const opts: SupabaseClientOptions<'public'> = {
+      realtime: { transport: WebSocket as unknown as WebSocketLikeConstructor },
+    };
+    this.db = createClient<any, 'public'>(url, serviceRoleKey, opts);
+  }
+
+  /**
+   * 新しいタスクを作成する。
+   * @param groupId - 家族グループID
+   * @param creatorId - 作成者（親）のユーザーID
+   * @param assigneeId - 担当者（子）のユーザーID（任意）
+   * @param taskName - タスク名
+   * @param category - カテゴリ（任意）
+   * @param rewardAmount - 報酬金額
+   * @param startTime - タスク開始時刻（任意）
+   * @param endTime - タスク終了時刻（任意）
+   * @param dueDate - 期日（任意）
+   * @param memo - メモ（任意）
+   * @returns 作成されたタスクオブジェクト
+   */
+  async createTask(
+    groupId: string,
+    creatorId: string,
+    assigneeId: string | undefined,
+    taskName: string,
+    category: string | undefined,
+    rewardAmount: number,
+    startTime: string | undefined,
+    endTime: string | undefined,
+    dueDate: string | undefined,
+    memo: string | undefined,
+  ): Promise<Task> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .insert({
+        group_id: groupId,
+        creator_id: creatorId,
+        assignee_id: assigneeId ?? null,
+        task_name: taskName,
+        category: category ?? null,
+        reward_amount: rewardAmount,
+        start_time: startTime ?? null,
+        end_time: endTime ?? null,
+        due_date: dueDate ?? null,
+        memo: memo ?? null,
+      })
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+      )
+      .single();
+
+    if (error || !data) {
+      throw new InternalServerErrorException('タスクの作成に失敗しました');
+    }
+
+    return data;
+  }
+
+  /**
+   * フィルタ条件に一致するタスク一覧を取得する。
+   * group_id フィルタで家族グループのデータ分離を保証する。
+   * assignee の name を JOIN して返す（タスク検索結果の担当者表示に使用）。
+   * @param filter - フィルタ条件（groupId は必須）
+   * @returns タスクの配列（作成日時降順）
+   */
+  async findAll(filter: FindTasksFilter): Promise<Task[]> {
+    let query = this.db
+      .from('tasks')
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at, assignee:users!assignee_id(id, name)',
+      )
+      // 家族グループ分離: 自グループのタスクのみ取得する
+      .eq('group_id', filter.groupId)
+      .eq('deleted_flag', false);
+
+    // ステータスフィルタ（指定された場合のみ）
+    if (filter.status) {
+      query = query.eq('status', filter.status);
+    }
+
+    // 担当者フィルタ（指定された場合のみ）
+    if (filter.assigneeId) {
+      query = query.eq('assignee_id', filter.assigneeId);
+    }
+
+    // キーワード検索（task_name に対して部分一致）
+    if (filter.keyword) {
+      query = query.ilike('task_name', `%${filter.keyword}%`);
+    }
+
+    // カテゴリフィルタ（指定された場合のみ）
+    if (filter.category) {
+      query = query.eq('category', filter.category);
+    }
+
+    // 月フィルタ: JST月初・翌月初をUTCに変換して due_date または start_time が含まれるタスクをフィルタする（FUN-TASK-005）
+    if (filter.month) {
+      const [year, mon] = filter.month.split('-').map(Number);
+      const TZ = 'Asia/Tokyo';
+      // JSTの月初・翌月初をUTCに変換する
+      const startUtc = fromZonedTime(new Date(year, mon - 1, 1, 0, 0, 0), TZ);
+      const endUtc = fromZonedTime(new Date(year, mon, 1, 0, 0, 0), TZ);
+      const startISO = startUtc.toISOString();
+      const endISO = endUtc.toISOString();
+      // 以下いずれかの条件を満たすタスクをフィルタする:
+      // 1. due_date が当月内
+      // 2. start_time が当月内（複数日タスク・単日タスク共通）
+      // 3. start_time が当月より前かつ end_time が当月以降（月をまたぐ複数日タスク）
+      query = query.or(
+        [
+          `and(due_date.gte.${startISO},due_date.lt.${endISO})`,
+          `and(start_time.gte.${startISO},start_time.lt.${endISO})`,
+          `and(start_time.lt.${startISO},end_time.gte.${startISO})`,
+        ].join(','),
+      );
+    }
+
+    // 作成日時の降順で返す
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      throw new InternalServerErrorException('タスク一覧の取得に失敗しました');
+    }
+
+    // assignee フィールドは SELECT の JOIN 結果のため型アサーションが必要
+    return (data ?? []) as unknown as Task[];
+  }
+
+  /**
+   * タスクを更新する。
+   * group_id と deleted_flag フィルタで家族グループのデータ分離と論理削除を保証する。
+   * @param taskId - 更新対象のタスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @param fields - 更新するフィールド（undefined のフィールドは除外される）
+   * @returns 更新されたタスクオブジェクト、対象が存在しない場合は null
+   */
+  async updateTask(
+    taskId: string,
+    groupId: string,
+    fields: {
+      assignee_id?: string;
+      task_name?: string;
+      category?: string;
+      reward_amount?: number;
+      start_time?: string;
+      end_time?: string;
+      due_date?: string;
+      memo?: string;
+    },
+  ): Promise<Task | null> {
+    // undefined のフィールドを除外して更新対象のみ抽出する
+    const updateData = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined),
+    );
+
+    const { data, error } = await this.db
+      .from('tasks')
+      .update(updateData)
+      // 家族グループ分離: 自グループのタスクのみ更新する
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの更新に失敗しました');
+    }
+
+    return data ?? null;
+  }
+
+  /**
+   * タスクをソフトデリートする（deleted_flag = true に更新）。
+   * group_id と deleted_flag フィルタで家族グループのデータ分離と二重削除を防止する。
+   * @param taskId - 削除対象のタスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @returns 削除に成功した場合は true、対象が存在しない場合は false
+   */
+  async deleteTask(taskId: string, groupId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .update({ deleted_flag: true })
+      // 家族グループ分離: 自グループのタスクのみ削除する
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの削除に失敗しました');
+    }
+
+    return data !== null;
+  }
+
+  /**
+   * タスクのステータスを更新する（FUN-TASK-004）。
+   * group_id と deleted_flag フィルタで家族グループのデータ分離を保証する。
+   * @param taskId - 更新対象のタスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @param status - 変更後のステータス
+   * @returns 更新されたタスクオブジェクト、対象が存在しない場合は null
+   */
+  async updateTaskStatus(
+    taskId: string,
+    groupId: string,
+    status: TaskStatus,
+  ): Promise<Task | null> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .update({ status })
+      // 家族グループ分離: 自グループのタスクのみ更新する
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクステータスの更新に失敗しました');
+    }
+
+    return data ?? null;
+  }
+
+  /**
+   * タスクIDで特定のタスクを1件取得する。
+   * group_id フィルタで家族グループのデータ分離を保証する。
+   * latest_completion として最新の完了記録も含めて返す。
+   * @param taskId - タスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @returns タスクが存在する場合は Task オブジェクト（latest_completion付き）、存在しない場合は null
+   */
+  async findById(taskId: string, groupId: string): Promise<Task | null> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .select(
+        'id, group_id, creator_id, assignee_id, task_name, category, reward_amount, status, start_time, end_time, due_date, memo, created_at, updated_at',
+      )
+      .eq('id', taskId)
+      // 家族グループ分離: 自グループのタスクのみ取得する
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの取得に失敗しました');
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    // 最新の完了記録を取得してタスクに付加する
+    const latestCompletion = await this.findLatestCompletion(taskId);
+
+    return { ...data, latest_completion: latestCompletion };
+  }
+
+  /**
+   * task_completions テーブルに実行報告レコードを作成する（FUN-TASK-008）。
+   * @param taskId - タスクID
+   * @param childId - 報告した子のユーザーID
+   * @param rewardAmount - 確定報酬金額（タスクの reward_amount を使用）
+   */
+  async createTaskCompletion(taskId: string, childId: string, rewardAmount: number): Promise<void> {
+    const { error } = await this.db.from('task_completions').insert({
+      task_id: taskId,
+      child_id: childId,
+      confirmed_reward: rewardAmount,
+    });
+
+    if (error) {
+      throw new InternalServerErrorException('実行報告の作成に失敗しました');
+    }
+  }
+
+  /**
+   * task_completions テーブルの該当レコードを承認済みに更新する（FUN-TASK-008）。
+   * deleted_flag = false のレコードを対象とする。
+   * @param taskId - タスクID
+   * @param approvedBy - 承認した親のユーザーID
+   */
+  async approveTaskCompletion(taskId: string, approvedBy: string): Promise<void> {
+    const { error } = await this.db
+      .from('task_completions')
+      .update({
+        approved_by: approvedBy,
+        // サーバー時間をISO 8601形式で設定する（タイムゾーン考慮）
+        approved_at: new Date().toISOString(),
+      })
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false);
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録の承認に失敗しました');
+    }
+  }
+
+  /**
+   * task_completions テーブルの該当レコードをソフトデリートする（FUN-TASK-008）。
+   * 差し戻し・取り下げ時に呼び出す。deleted_flag = false のレコードを対象とする。
+   * 対象レコードが存在しない場合もエラーにしない（pending→cancelled など）。
+   * @param taskId - タスクID
+   */
+  async cancelTaskCompletion(taskId: string): Promise<void> {
+    const { data, error } = await this.db
+      .from('task_completions')
+      .update({ deleted_flag: true })
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録のキャンセルに失敗しました');
+    }
+
+    // 対象レコードが存在しない場合（data === null）はエラーにしない
+    void data;
+  }
+
+  /**
+   * 指定ユーザーが家族グループのメンバーか確認する。
+   * @param userId - 確認対象のユーザーID
+   * @param groupId - 家族グループID
+   * @returns メンバーであれば true
+   */
+  async isMemberOfGroup(userId: string, groupId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('group_members')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('メンバー確認に失敗しました');
+    }
+
+    return data !== null;
+  }
+
+  /**
+   * タスクの assignee_id のみを返す軽量クエリ。
+   * 目標とタスクの担当者整合性チェックに使用する。
+   * @param taskId - タスクID
+   * @param groupId - 家族グループID（データ分離用）
+   * @returns assignee_id。タスクが存在しない場合は null
+   */
+  async findTaskAssignee(taskId: string, groupId: string): Promise<string | null> {
+    const { data, error } = await this.db
+      .from('tasks')
+      .select('assignee_id')
+      .eq('id', taskId)
+      .eq('group_id', groupId)
+      .eq('deleted_flag', false)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('タスクの担当者取得に失敗しました');
+    }
+
+    return (data?.assignee_id ?? null) as string | null;
+  }
+
+  /**
+   * task_completions テーブルから deleted_flag = false の最新レコードを1件取得する（FUN-TASK-008）。
+   * reported_at 降順でソートし最初の1件を返す。存在しない場合は null を返す。
+   * @param taskId - タスクID
+   * @returns 最新の完了記録、存在しない場合は null
+   */
+  async findLatestCompletion(taskId: string): Promise<TaskCompletion | null> {
+    const { data, error } = await this.db
+      .from('task_completions')
+      .select(
+        'id, task_id, child_id, reported_at, approved_by, approved_at, confirmed_reward, created_at, updated_at',
+      )
+      .eq('task_id', taskId)
+      .eq('deleted_flag', false)
+      // 最新の報告を取得するため reported_at 降順でソート
+      .order('reported_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException('完了記録の取得に失敗しました');
+    }
+
+    return data ?? null;
+  }
+}
