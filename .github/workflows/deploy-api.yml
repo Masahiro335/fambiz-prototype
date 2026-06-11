@@ -60,6 +60,8 @@ jobs:
     name: Deploy to Render (Production)
     needs: pre-deploy-check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     environment:
       name: production
 

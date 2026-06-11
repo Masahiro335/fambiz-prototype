@@ -60,6 +60,8 @@ jobs:
     name: Deploy to Vercel (Production)
     needs: pre-deploy-check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     environment:
       name: production
       url: ${{ steps.deploy.outputs.url }}
@@ -79,6 +81,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # vercel build が next build を実行する前に共有型を生成する
+      - name: Build shared packages
+        run: pnpm --filter @fambiz/types build
 
       - name: Install Vercel CLI
         run: pnpm add -g vercel
