@@ -71,6 +71,7 @@
 | `.github/workflows/ci.yml` | `feature/**` / `fix/**` / `develop` へのプッシュ、`develop` / `main` へのPR | lint・型チェック・テストの自動実行 |
 | `.github/workflows/deploy-web.yml` | `release` ブランチへのプッシュ | Next.js を Vercel 本番環境へデプロイ |
 | `.github/workflows/deploy-api.yml` | `release` ブランチへのプッシュ | NestJS を Render 本番環境へデプロイ |
+| `.github/workflows/supabase-keep-alive.yml` | 毎週月・木 9:00 UTC（cron）、手動 | Supabase 無料プランの自動停止（7日間非アクティブ）を防ぐ定期 ping |
 
 ### ci.yml — CIパイプライン
 
@@ -157,6 +158,25 @@ Render API をポーリング（30秒間隔 × 最大20回 = 最大10分）
 | `RENDER_DEPLOY_HOOK_URL` | Render › Service › Settings › Deploy Hook で発行 |
 | `RENDER_API_KEY` | Render › Account Settings › API Keys で発行 |
 | `RENDER_SERVICE_ID` | Render サービスの ID（`srv-xxxxxxxxxx` 形式） |
+
+### supabase-keep-alive.yml — Supabase 自動停止防止
+
+**背景:** Supabase 無料プランは 7日間 DB アクセスがないとプロジェクトを自動停止する。停止中に Vercel Middleware が Supabase Auth へ接続を試みると応答待ちのままタイムアウト（504 MIDDLEWARE_INVOCATION_TIMEOUT）が発生する。
+
+**仕組み:** Supabase REST API（`/rest/v1/users?select=id&limit=1`）に週2回 GET リクエストを送ることで DB 接続を発生させ、7日間非アクティブカウンターをリセットする。RLS により結果は空配列になるが、DB への接続自体が「アクティビティ」としてカウントされる。
+
+| 設定項目 | 内容 |
+|---------|------|
+| スケジュール | 毎週月・木 9:00 UTC（`0 9 * * 1,4`）|
+| 手動実行 | `workflow_dispatch` で GitHub Actions UI から即時実行可能 |
+| 認証 | `SUPABASE_ANON_KEY` シークレットを `apikey` / `Authorization` ヘッダーに使用 |
+| 成功条件 | HTTP 200 を受信（DB が稼働中であること） |
+
+必要なシークレット:
+
+| シークレット名 | 取得元 |
+|---|---|
+| `SUPABASE_ANON_KEY` | Supabase Dashboard › Settings › API › Project API keys › **anon public** |
 
 ### GitHub リポジトリの推奨設定
 
