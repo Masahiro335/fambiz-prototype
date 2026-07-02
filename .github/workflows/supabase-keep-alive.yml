@@ -1,0 +1,39 @@
+name: Supabase Keep-Alive
+
+on:
+  # 週2回（月・木 9:00 UTC）定期実行 — 7日間非アクティブ自動停止を防ぐ
+  schedule:
+    - cron: '0 9 * * 1,4'
+  # 手動実行（動作確認・緊急起動用）
+  workflow_dispatch:
+
+jobs:
+  # ────────────────────────────────────────────
+  # Job: Supabase REST API に ping して DB をアクティブに保つ
+  # ────────────────────────────────────────────
+  ping:
+    name: Ping Supabase DB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send heartbeat to Supabase REST API
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Sending heartbeat to Supabase..."
+          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "https://hjkcknqbnqpynrmvrduk.supabase.co/rest/v1/users?select=id&limit=1")
+          echo "HTTP status: $response"
+          cat /tmp/body.json
+          # RLS により結果は空配列になるが DB への接続は確立される（自動停止カウンターがリセットされる）
+          if [ "$response" != "200" ]; then
+            echo "Unexpected HTTP status. Supabase project may already be paused."
+            exit 1
+          fi
+          echo "Heartbeat successful."
+
+  # ────────────────────────────────────────────
+  # 必要シークレット（GitHub Secrets に登録）
+  # ────────────────────────────────────────────
+  # SUPABASE_ANON_KEY : Supabase Dashboard > Settings > API > Project API keys > anon/public
