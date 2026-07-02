@@ -8,12 +8,17 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  // Supabase 環境変数が未設定の場合はミドルウェアをスキップ（保護ルートはページ側でリダイレクト）
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -26,19 +31,26 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
-    },
-  );
+    });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (!session && isProtectedRoute(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    const next = request.nextUrl.pathname + request.nextUrl.search;
-    url.pathname = '/login';
-    url.search = `?next=${encodeURIComponent(next)}`;
-    return NextResponse.redirect(url);
+    if (!session && isProtectedRoute(request.nextUrl.pathname)) {
+      const url = request.nextUrl.clone();
+      const next = request.nextUrl.pathname + request.nextUrl.search;
+      url.pathname = '/login';
+      url.search = `?next=${encodeURIComponent(next)}`;
+      return NextResponse.redirect(url);
+    }
+  } catch {
+    // Supabase 接続エラー時は保護ルートをログインへリダイレクト
+    if (isProtectedRoute(request.nextUrl.pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
