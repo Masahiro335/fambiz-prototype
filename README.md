@@ -511,3 +511,21 @@ fambiz-prototype/
 ## ライセンス
 
 MIT
+
+## キャプチャ
+<img width="561" height="555" alt="スクリーンショット 2026-07-02 10 29 42" src="https://github.com/user-attachments/assets/31c37f47-ec82-4e6b-b097-a4bf7a79b57a" />
+<img width="1007" height="898" alt="スクリーンショット 2026-07-02 10 30 44" src="https://github.com/user-attachments/assets/c4b1ca20-c3d7-4d60-a7a0-3d4583552cf8" />
+<img width="1017" height="948" alt="スクリーンショット 2026-07-02 10 31 00" src="https://github.com/user-attachments/assets/841f61c1-04ba-40b4-bda3-2c1451cb52fe" />
+<img width="1026" height="595" alt="スクリーンショット 2026-07-02 10 32 26" src="https://github.com/user-attachments/assets/2103fe34-74fa-4c9a-8977-340998c2e69e" />
+<img width="1002" height="1311" alt="スクリーンショット 2026-07-02 10 32 20" src="https://github.com/user-attachments/assets/30dd06cd-65e9-4000-88af-61baf8fce478" />
+<img width="1027" height="1313" alt="スクリーンショット 2026-07-02 10 32 11" src="https://github.com/user-attachments/assets/a8c17041-6eee-4ece-9c69-841e1e128950" />
+<img width="1012" height="1276" alt="スクリーンショット 2026-07-02 10 32 00" src="https://github.com/user-attachments/assets/2fe57105-0556-4a5c-979b-7cf2cf51dbd5" />
+<img width="560" height="864" alt="スクリーンショット 2026-07-02 10 31 50" src="https://github.com/user-attachments/assets/bd4dd359-f5f0-482a-bb46-a0db40c7cb11" />
+<img width="1026" height="1316" alt="スクリーンショット 2026-07-02 10 31 41" src="https://github.com/user-attachments/assets/22fafbf3-cabe-4d08-8def-f42f0115311d" />
+<img width="716" height="979" alt="スクリーンショット 2026-07-02 10 32 53" src="https://github.com/user-attachments/assets/38c981c0-405c-40f4-b93b-60662d886452" />
+<img width="429" height="667" alt="スクリーンショット 2026-07-02 10 32 39" src="https://github.com/user-attachments/assets/25aa232a-6508-4481-b006-160afb530fb2" />
+<img width="715" height="669" alt="スクリーンショット 2026-07-02 10 32 33" src="https://github.com/user-attachments/assets/14dbd361-07ef-4663-822d-219daa07b8ba" />
+<img width="1036" height="1310" alt="スクリーンショット 2026-07-02 10 31 27" src="https://github.com/user-attachments/assets/9eff5721-4405-406b-9797-2fb5300a3c7f" />
+<img width="563" height="1062" alt="スクリーンショット 2026-07-02 10 31 17" src="https://github.com/user-attachments/assets/9fb01348-5ec0-455c-b743-7d6a39bdcbbe" />
+
+
