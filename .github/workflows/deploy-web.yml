@@ -90,8 +90,8 @@ jobs:
         run: pnpm add -g vercel
 
       # Vercel プロジェクト設定を取得（.vercel/project.json を生成）
+      # rootDirectory は Vercel 側で apps/web に設定済みのためルートから実行する
       - name: Pull Vercel environment
-        working-directory: apps/web
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -99,7 +99,6 @@ jobs:
 
       # Vercel のビルドパイプラインで Next.js をビルド
       - name: Build project artifacts
-        working-directory: apps/web
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -108,7 +107,6 @@ jobs:
       # ビルド済みアーティファクトを本番にデプロイ
       - name: Deploy to production
         id: deploy
-        working-directory: apps/web
         run: |
           url=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
           echo "url=$url" >> $GITHUB_OUTPUT
