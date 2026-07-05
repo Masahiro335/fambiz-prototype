@@ -60,8 +60,9 @@ export default async function InvitePage() {
     { method: 'POST' },
   );
 
-  // 招待URLを組み立てる（NEXT_PUBLIC_WEB_URLが未設定の場合はlocalhostをデフォルトとする）
-  const baseUrl = process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000';
+  // 招待URLを組み立てる（サーバーサイドでは WEB_URL を優先する）
+  const baseUrl =
+    process.env.WEB_URL ?? process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000';
   const joinUrl = `${baseUrl}/family/join?code=${inviteCode}`;
 
   // QRコードのData URLをサーバーサイドで生成する
