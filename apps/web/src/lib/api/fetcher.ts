@@ -17,7 +17,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     data: { session },
   } = await supabase.auth.getSession();
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  // サーバーサイドでは API_URL を優先し、フォールバックとして NEXT_PUBLIC_ 版を使用
+  const apiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL;
+  const res = await fetch(`${apiUrl}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
