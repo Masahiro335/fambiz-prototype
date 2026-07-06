@@ -6,8 +6,8 @@ const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_API_URL',
 ];
 
-// 本番ビルド時に必須 env var が未設定ならビルドを失敗させる
-if (process.env.NODE_ENV === 'production') {
+// NEXT_VALIDATE_ENV=1 のときのみ必須 env var をチェック（deploy-web.yml の vercel build ステップで設定）
+if (process.env.NEXT_VALIDATE_ENV === '1') {
   const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(`[next.config] 必須環境変数が未設定です: ${missing.join(', ')}`);
