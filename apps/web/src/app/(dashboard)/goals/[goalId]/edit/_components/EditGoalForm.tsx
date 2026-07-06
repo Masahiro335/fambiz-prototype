@@ -124,7 +124,6 @@ export function EditGoalForm({
 
       // 更新成功後は詳細ページへ戻る
       router.push(`/goals/${goal.id}`);
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {

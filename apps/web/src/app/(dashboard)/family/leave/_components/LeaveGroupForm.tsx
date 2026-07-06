@@ -65,7 +65,6 @@ export function LeaveGroupForm({ members, groupId }: LeaveGroupFormProps) {
 
       // 成功後は家族管理画面へリダイレクトする
       router.push('/family');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {

@@ -50,3 +50,5 @@ chrome/
 
 # Supabase
 **/supabase/.temp
+.vercel
+.env*

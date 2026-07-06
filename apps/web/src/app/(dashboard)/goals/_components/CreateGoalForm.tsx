@@ -128,7 +128,6 @@ export function CreateGoalForm({
 
       // 登録成功後は目標一覧へ遷移する
       router.push('/goals');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
