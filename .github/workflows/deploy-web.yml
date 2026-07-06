@@ -97,6 +97,21 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      # 必須 env var が Vercel に設定されているか確認（キー名のみチェック、値は表示しない）
+      - name: Verify required env vars
+        run: |
+          missing=()
+          for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_API_URL; do
+            if ! grep -q "^${var}=" .vercel/.env.production.local 2>/dev/null; then
+              missing+=("$var")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Vercel に以下の env var が未設定です: ${missing[*]}"
+            exit 1
+          fi
+          echo "必須 env var が全て確認されました"
+
       # Vercel のビルドパイプラインで Next.js をビルド
       - name: Build project artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
