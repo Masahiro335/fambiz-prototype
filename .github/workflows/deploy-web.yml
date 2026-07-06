@@ -113,12 +113,12 @@ jobs:
           echo "必須 env var が全て確認されました"
 
       # Vercel のビルドパイプラインで Next.js をビルド
+      # env var の存在確認は上の Verify ステップで完了しているため NEXT_VALIDATE_ENV は不要
       - name: Build project artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          NEXT_VALIDATE_ENV: '1'
 
       # ビルド済みアーティファクトを本番にデプロイ
       - name: Deploy to production
