@@ -566,6 +566,7 @@ describe('TasksService', () => {
       // タスクの start_time 月（2026-05）で報酬チェックが行われること
       expect(mockRewardsRepository.findByChildAndMonth).toHaveBeenCalledWith(
         reportedTaskWithStartTime.assignee_id,
+        parentUser.family_group_id,
         '2026-05',
       );
       expect(mockTasksRepository.approveTaskCompletion).not.toHaveBeenCalled();
@@ -586,6 +587,7 @@ describe('TasksService', () => {
       // タスクの start_time 月（2026-05）で報酬チェックが行われること
       expect(mockRewardsRepository.findByChildAndMonth).toHaveBeenCalledWith(
         pendingTaskWithStartTime.assignee_id,
+        parentUser.family_group_id,
         '2026-05',
       );
       expect(mockTasksRepository.createTaskCompletion).not.toHaveBeenCalled();
