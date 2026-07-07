@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-const PROTECTED_PATHS = ['/family', '/tasks', '/goals', '/rewards'];
+const PROTECTED_PREFIXES = ['/family', '/tasks', '/goals', '/rewards', '/articles'];
 
 function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_PATHS.some((path) => pathname.startsWith(path));
+  if (pathname === '/') return true;
+  return PROTECTED_PREFIXES.some((path) => pathname.startsWith(path));
 }
 
 export async function middleware(request: NextRequest) {

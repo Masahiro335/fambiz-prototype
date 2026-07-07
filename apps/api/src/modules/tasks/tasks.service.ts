@@ -252,6 +252,7 @@ export class TasksService {
         const targetMonth = `${taskMonthJst.getUTCFullYear()}-${String(taskMonthJst.getUTCMonth() + 1).padStart(2, '0')}`;
         const existingReward = await this.rewardsRepository.findByChildAndMonth(
           currentTask.assignee_id,
+          user.family_group_id,
           targetMonth,
         );
         if (existingReward?.status === 'paid') {
@@ -283,6 +284,7 @@ export class TasksService {
         const targetMonth = `${taskMonthJst.getUTCFullYear()}-${String(taskMonthJst.getUTCMonth() + 1).padStart(2, '0')}`;
         const existingReward = await this.rewardsRepository.findByChildAndMonth(
           currentTask.assignee_id,
+          user.family_group_id,
           targetMonth,
         );
         if (existingReward?.status === 'paid') {
