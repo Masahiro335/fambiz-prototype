@@ -170,6 +170,7 @@ describe('RewardsService', () => {
       // 再計算後に UPDATE が呼ばれること
       expect(mockRewardsRepository.updateAmounts).toHaveBeenCalledWith(
         mockReward.id,
+        groupId,
         2000,
         1000,
         3000,

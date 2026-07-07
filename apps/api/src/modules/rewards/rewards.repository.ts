@@ -37,13 +37,19 @@ export class RewardsRepository {
    * @param targetMonth - 対象月（YYYY-MM形式）
    * @returns 報酬が存在する場合は Reward オブジェクト、存在しない場合は null
    */
-  async findByChildAndMonth(childId: string, targetMonth: string): Promise<Reward | null> {
+  async findByChildAndMonth(
+    childId: string,
+    groupId: string,
+    targetMonth: string,
+  ): Promise<Reward | null> {
     const { data, error } = await this.db
       .from('rewards')
       .select(
         'id, group_id, child_id, target_month, task_reward_total, bonus_reward_total, total_amount, evaluation_score, evaluation_comment, status, paid_at, created_at, updated_at',
       )
       .eq('child_id', childId)
+      // 家族グループ分離: 自グループの報酬のみ取得する
+      .eq('group_id', groupId)
       .eq('target_month', targetMonth)
       .eq('deleted_flag', false)
       .maybeSingle();
@@ -162,6 +168,7 @@ export class RewardsRepository {
    */
   async updateAmounts(
     rewardId: string,
+    groupId: string,
     taskRewardTotal: number,
     bonusRewardTotal: number,
     totalAmount: number,
@@ -174,6 +181,8 @@ export class RewardsRepository {
         total_amount: totalAmount,
       })
       .eq('id', rewardId)
+      // 家族グループ分離: 自グループの報酬のみ更新する
+      .eq('group_id', groupId)
       .select(
         'id, group_id, child_id, target_month, task_reward_total, bonus_reward_total, total_amount, evaluation_score, evaluation_comment, status, paid_at, created_at, updated_at',
       )
