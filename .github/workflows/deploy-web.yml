@@ -113,9 +113,14 @@ jobs:
           echo "必須 env var が全て確認されました"
 
       # Vercel のビルドパイプラインで Next.js をビルド
-      # env var の存在確認は上の Verify ステップで完了しているため NEXT_VALIDATE_ENV は不要
+      # GitHub Actions 上での vercel build はサブプロセスへの env var 注入が不安定なため
+      # .vercel/.env.production.local を明示的に export してから実行する
       - name: Build project artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -a
+          source .vercel/.env.production.local
+          set +a
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
