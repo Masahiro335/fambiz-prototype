@@ -160,7 +160,6 @@ export function EditTaskForm({ task, familyGroupId, paidMonths }: { task: Task; 
 
       // 更新成功後はタスク一覧へ遷移する
       router.push('/tasks');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
@@ -210,7 +209,6 @@ export function EditTaskForm({ task, familyGroupId, paidMonths }: { task: Task; 
 
       // 削除成功後はタスク一覧へ遷移する
       router.push('/tasks');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {

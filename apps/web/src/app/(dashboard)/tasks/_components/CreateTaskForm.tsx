@@ -162,9 +162,8 @@ export function CreateTaskForm({
         }
       }
 
-      // 登録成功後はタスク一覧へ遷移する
+      // 登録成功後はタスク一覧へ遷移する（pushによるページ遷移でデータは再取得される）
       router.push('/tasks');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
