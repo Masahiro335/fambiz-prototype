@@ -97,24 +97,30 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # 必須 env var が Vercel に設定されているか確認（キー名のみチェック、値は表示しない）
+      # 必須 env var が Vercel に設定されているか確認（キー名と非空値の両方をチェック）
       - name: Verify required env vars
         run: |
           missing=()
+          empty=()
           for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY NEXT_PUBLIC_API_URL; do
             if ! grep -q "^${var}=" .vercel/.env.production.local 2>/dev/null; then
               missing+=("$var")
+            elif grep -q "^${var}=\"\"$\|^${var}=$" .vercel/.env.production.local 2>/dev/null; then
+              empty+=("$var")
             fi
           done
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Vercel に以下の env var が未設定です: ${missing[*]}"
             exit 1
           fi
+          if [ ${#empty[@]} -gt 0 ]; then
+            echo "::error::以下の env var が空文字列です（Vercel で Non-sensitive として設定してください）: ${empty[*]}"
+            exit 1
+          fi
           echo "必須 env var が全て確認されました"
 
       # Vercel のビルドパイプラインで Next.js をビルド
-      # GitHub Actions 上での vercel build はサブプロセスへの env var 注入が不安定なため
-      # .vercel/.env.production.local を明示的に export してから実行する
+      # .vercel/.env.production.local の値を明示的に export して next build に渡す
       - name: Build project artifacts
         run: |
           set -a
