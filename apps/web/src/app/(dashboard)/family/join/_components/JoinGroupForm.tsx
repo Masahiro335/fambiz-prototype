@@ -61,7 +61,6 @@ export function JoinGroupForm({ inviteCode, groupName }: JoinGroupFormProps) {
       // JWTに family_group_id を反映させるためトークンをリフレッシュしてからリダイレクトする
       await supabase.auth.refreshSession();
       router.push('/family');
-      router.refresh();
     } catch {
       setErrorMessage('通信エラーが発生しました。時間をおいて再度お試しください。');
     } finally {
