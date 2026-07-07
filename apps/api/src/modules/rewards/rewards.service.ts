@@ -50,7 +50,7 @@ export class RewardsService {
     }
 
     // 既存の報酬レコードを検索する
-    const existing = await this.rewardsRepository.findByChildAndMonth(childId, targetMonth);
+    const existing = await this.rewardsRepository.findByChildAndMonth(childId, groupId, targetMonth);
 
     // 支払い済みの場合は再計算せずにそのまま返す
     if (existing && existing.status === 'paid') {
@@ -86,6 +86,7 @@ export class RewardsService {
     // status = 'pending' の場合は再計算して UPDATE する
     return this.rewardsRepository.updateAmounts(
       existing.id,
+      groupId,
       taskRewardTotal,
       bonusRewardTotal,
       totalAmount,

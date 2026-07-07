@@ -36,9 +36,15 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        setErrorMessage('システム設定エラーが発生しました。管理者にお問い合わせください。');
+        return;
+      }
+
       const body: CreateUserDto = { email, password, name, role };
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/auth/register`, {
+      const res = await fetch(`${apiUrl}/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
