@@ -7,33 +7,110 @@ on:
   # 手動実行（動作確認・緊急起動用）
   workflow_dispatch:
 
+env:
+  PROJECT_REF: hjkcknqbnqpynrmvrduk
+
 jobs:
   # ────────────────────────────────────────────
-  # Job: Supabase REST API に ping して DB をアクティブに保つ
+  # Job: Supabase REST API に ping して DB をアクティブに保つ。
+  #      停止を検知した場合は Management API で自動復旧する。
   # ────────────────────────────────────────────
   ping:
     name: Ping Supabase DB
     runs-on: ubuntu-latest
     steps:
-      - name: Send heartbeat to Supabase REST API
+      - name: Send heartbeat (auto-restore if paused)
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          echo "Sending heartbeat to Supabase..."
-          response=$(curl -s -o /tmp/body.json -w "%{http_code}" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "https://hjkcknqbnqpynrmvrduk.supabase.co/rest/v1/users?select=id&limit=1")
-          echo "HTTP status: $response"
-          cat /tmp/body.json
-          # RLS により結果は空配列になるが DB への接続は確立される（自動停止カウンターがリセットされる）
-          if [ "$response" != "200" ]; then
-            echo "Unexpected HTTP status. Supabase project may already be paused."
+          REST_URL="https://${PROJECT_REF}.supabase.co/rest/v1/users?select=id&limit=1"
+          MGMT_URL="https://api.supabase.com/v1/projects/${PROJECT_REF}"
+
+          # ── ヘルパー: REST ping を実行して HTTP ステータスを返す ──
+          do_ping() {
+            curl_exit=0
+            status=$(curl -s \
+              --connect-timeout 10 \
+              --max-time 30 \
+              -o /tmp/ping_body.json \
+              -w "%{http_code}" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              "$REST_URL") || curl_exit=$?
+            echo "$curl_exit:$status"
+          }
+
+          # ── Step 1: 最初の ping ──
+          echo "=== Step 1: Initial heartbeat ==="
+          result=$(do_ping)
+          curl_exit="${result%%:*}"
+          http_status="${result##*:}"
+          echo "curl exit: $curl_exit, HTTP status: $http_status"
+
+          if [ "$curl_exit" -eq 0 ] && [ "$http_status" = "200" ]; then
+            echo "Heartbeat successful. Project is active."
+            exit 0
+          fi
+
+          # ── Step 2: 停止と判定 → Management API で復旧 ──
+          echo "=== Step 2: Project appears paused (curl=$curl_exit, http=$http_status). Restoring... ==="
+
+          restore_status=$(curl -s \
+            --max-time 30 \
+            -o /tmp/restore_body.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            "${MGMT_URL}/restore")
+          echo "Restore API status: $restore_status"
+          cat /tmp/restore_body.json
+
+          # 202 Accepted または 200 OK が成功
+          if [ "$restore_status" != "200" ] && [ "$restore_status" != "202" ]; then
+            echo "::error::Restore API returned unexpected status $restore_status. Manual intervention required."
+            echo "Dashboard: https://supabase.com/dashboard/org/rwwwmruqmvqfbiibdvwz"
             exit 1
           fi
-          echo "Heartbeat successful."
+
+          # ── Step 3: ACTIVE_HEALTHY になるまでポーリング（最大 5 分）──
+          echo "=== Step 3: Waiting for project to become ACTIVE_HEALTHY ==="
+          MAX_ATTEMPTS=10
+          INTERVAL=30
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            sleep $INTERVAL
+            project_status=$(curl -s \
+              --max-time 15 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "$MGMT_URL" | jq -r '.status // "UNKNOWN"')
+            echo "Attempt $i/$MAX_ATTEMPTS — project status: $project_status"
+            if [ "$project_status" = "ACTIVE_HEALTHY" ]; then
+              echo "Project restored successfully."
+              break
+            fi
+            if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
+              echo "::error::Project did not become ACTIVE_HEALTHY within $((MAX_ATTEMPTS * INTERVAL)) seconds."
+              exit 1
+            fi
+          done
+
+          # ── Step 4: 最終 ping で疎通確認 ──
+          echo "=== Step 4: Final heartbeat after restore ==="
+          result=$(do_ping)
+          curl_exit="${result%%:*}"
+          http_status="${result##*:}"
+          echo "curl exit: $curl_exit, HTTP status: $http_status"
+          cat /tmp/ping_body.json
+
+          if [ "$curl_exit" -ne 0 ] || [ "$http_status" != "200" ]; then
+            echo "::error::Final heartbeat failed (curl=$curl_exit, http=$http_status) after restore."
+            exit 1
+          fi
+          echo "Auto-restore complete. Heartbeat successful."
 
   # ────────────────────────────────────────────
   # 必要シークレット（GitHub Secrets に登録）
   # ────────────────────────────────────────────
-  # SUPABASE_ANON_KEY : Supabase Dashboard > Settings > API > Project API keys > anon/public
+  # SUPABASE_ANON_KEY      : Supabase Dashboard > Settings > API > anon/public
+  # SUPABASE_ACCESS_TOKEN  : Supabase Dashboard > Account > Access Tokens（パーソナルアクセストークン）
